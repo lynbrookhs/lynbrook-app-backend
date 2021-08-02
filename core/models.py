@@ -1,6 +1,6 @@
-from django.contrib.postgres.fields import ArrayField
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models.signals import post_save
@@ -30,7 +30,7 @@ class PollType(models.IntegerChoices):
 
 
 class User(AbstractUser):
-    pass
+    organizations = models.ManyToManyField("Organization", through="Membership")
 
 
 class Organization(models.Model):
@@ -39,9 +39,19 @@ class Organization(models.Model):
     advisors = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="advisor_organization_set")
     admins = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="admin_organization_set")
 
-    day = models.IntegerField(choices=DayOfWeek.choices)
-    time = models.TimeField()
-    link = models.URLField()
+    day = models.IntegerField(choices=DayOfWeek.choices, null=True, blank=True)
+    time = models.TimeField(null=True, blank=True)
+    link = models.URLField(null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Membership(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+
+    points = models.PositiveIntegerField()
 
 
 class Event(models.Model):
@@ -52,17 +62,23 @@ class Event(models.Model):
     start = models.DateTimeField()
     end = models.DateTimeField()
 
-    points = models.IntegerField()
-    code = models.IntegerField()
+    points = models.PositiveIntegerField()
+    code = models.PositiveIntegerField()
     users = models.ManyToManyField(settings.AUTH_USER_MODEL)
+
+    def __str__(self):
+        return self.name
 
 
 class Post(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-
     title = models.CharField(max_length=200)
     date = models.DateTimeField(auto_now=True)
     content = models.TextField()
+    published = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.title
 
 
 class Poll(models.Model):
@@ -91,9 +107,12 @@ class Poll(models.Model):
     type = models.IntegerField(choices=PollType.choices)
     description = models.TextField()
 
-    choices = ArrayField(models.TextField(), null=True)
-    min_values = models.IntegerField(validators=[MinValueValidator(1)], default=1, null=True)
-    max_values = models.IntegerField(validators=[MinValueValidator(1)], default=1, null=True)
+    choices = ArrayField(models.TextField(), null=True, blank=True)
+    min_values = models.IntegerField(validators=[MinValueValidator(1)], default=1, null=True, blank=True)
+    max_values = models.IntegerField(validators=[MinValueValidator(1)], default=1, null=True, blank=True)
+
+    def __str__(self):
+        return self.description
 
 
 class Prize(models.Model):
@@ -101,7 +120,10 @@ class Prize(models.Model):
 
     name = models.CharField(max_length=200)
     description = models.TextField()
-    points = models.IntegerField()
+    points = models.PositiveIntegerField()
+
+    def __str__(self):
+        return self.name
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
