@@ -1,14 +1,31 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db.models import (
+    CASCADE,
+    BooleanField,
+    CharField,
+    CheckConstraint,
+    DateField,
+    DateTimeField,
+    ForeignKey,
+    IntegerChoices,
+    IntegerField,
+    ManyToManyField,
+    Model,
+    PositiveIntegerField,
+    Q,
+    TextField,
+    TimeField,
+    URLField,
+)
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django_better_admin_arrayfield.models.fields import ArrayField
 from rest_framework.authtoken.models import Token
 
 
-class DayOfWeek(models.IntegerChoices):
+class DayOfWeek(IntegerChoices):
     MONDAY = 0
     TUESDAY = 1
     WEDNESDAY = 2
@@ -18,82 +35,81 @@ class DayOfWeek(models.IntegerChoices):
     SUNDAY = 6
 
 
-class OrganizationType(models.IntegerChoices):
+class OrganizationType(IntegerChoices):
     GLOBAL = 1
     CLASS = 2
     CLUB = 3
 
 
-class PollType(models.IntegerChoices):
+class PollType(IntegerChoices):
     SELECT = 1
     SHORT_ANSWER = 2
 
 
 class User(AbstractUser):
-    organizations = models.ManyToManyField("Organization", through="Membership")
+    organizations = ManyToManyField("Organization", through="Membership")
 
 
-class Organization(models.Model):
-    name = models.CharField(max_length=200)
-    type = models.IntegerField(choices=OrganizationType.choices)
-    advisors = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="advisor_organization_set")
-    admins = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="admin_organization_set")
+class Organization(Model):
+    name = CharField(max_length=200)
+    type = IntegerField(choices=OrganizationType.choices)
+    advisors = ManyToManyField(settings.AUTH_USER_MODEL, related_name="advisor_organization_set")
+    admins = ManyToManyField(settings.AUTH_USER_MODEL, related_name="admin_organization_set")
 
-    day = models.IntegerField(choices=DayOfWeek.choices, null=True, blank=True)
-    time = models.TimeField(null=True, blank=True)
-    link = models.URLField(null=True, blank=True)
-
-    def __str__(self):
-        return self.name
-
-
-class Membership(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-
-    points = models.PositiveIntegerField()
-
-
-class Event(models.Model):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-
-    name = models.CharField(max_length=200)
-    description = models.TextField()
-    start = models.DateTimeField()
-    end = models.DateTimeField()
-
-    points = models.PositiveIntegerField()
-    code = models.PositiveIntegerField()
-    users = models.ManyToManyField(settings.AUTH_USER_MODEL)
+    day = IntegerField(choices=DayOfWeek.choices, null=True, blank=True)
+    time = TimeField(null=True, blank=True)
+    link = URLField(null=True, blank=True)
 
     def __str__(self):
         return self.name
 
 
-class Post(models.Model):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    title = models.CharField(max_length=200)
-    date = models.DateTimeField(auto_now=True)
-    content = models.TextField()
-    published = models.BooleanField(default=False)
+class Membership(Model):
+    user = ForeignKey(User, on_delete=CASCADE)
+    organization = ForeignKey(Organization, on_delete=CASCADE)
+    points = PositiveIntegerField()
+
+
+class Event(Model):
+    organization = ForeignKey(Organization, on_delete=CASCADE)
+
+    name = CharField(max_length=200)
+    description = TextField()
+    start = DateTimeField()
+    end = DateTimeField()
+
+    points = PositiveIntegerField()
+    code = PositiveIntegerField()
+    users = ManyToManyField(settings.AUTH_USER_MODEL)
+
+    def __str__(self):
+        return self.name
+
+
+class Post(Model):
+    organization = ForeignKey(Organization, on_delete=CASCADE)
+    title = CharField(max_length=200)
+    date = DateTimeField(auto_now=True)
+    content = TextField()
+    published = BooleanField(default=False)
 
     def __str__(self):
         return self.title
 
 
-class Poll(models.Model):
+class Poll(Model):
     class Meta:
         constraints = [
-            models.CheckConstraint(
+            CheckConstraint(
                 name="%(app_label)s_%(class)s_type",
                 check=(
-                    models.Q(
+                    Q(
                         type=PollType.SHORT_ANSWER,
                         choices__isnull=True,
                         min_values__isnull=True,
                         max_values__isnull=True,
                     )
-                    | models.Q(
+                    | Q(
                         type=PollType.SELECT,
                         choices__isnull=False,
                         min_values__isnull=False,
@@ -103,49 +119,49 @@ class Poll(models.Model):
             )
         ]
 
-    post = models.ForeignKey(Post, on_delete=models.CASCADE)
-    type = models.IntegerField(choices=PollType.choices)
-    description = models.TextField()
+    post = ForeignKey(Post, on_delete=CASCADE)
+    type = IntegerField(choices=PollType.choices)
+    description = TextField()
 
-    choices = ArrayField(models.TextField(), null=True, blank=True)
-    min_values = models.IntegerField(validators=[MinValueValidator(1)], default=1, null=True, blank=True)
-    max_values = models.IntegerField(validators=[MinValueValidator(1)], default=1, null=True, blank=True)
+    choices = ArrayField(TextField(), null=True, blank=True)
+    min_values = IntegerField(validators=[MinValueValidator(1)], default=1, null=True, blank=True)
+    max_values = IntegerField(validators=[MinValueValidator(1)], default=1, null=True, blank=True)
 
     def __str__(self):
         return self.description
 
 
-class Prize(models.Model):
-    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+class Prize(Model):
+    organization = ForeignKey(Organization, on_delete=CASCADE)
 
-    name = models.CharField(max_length=200)
-    description = models.TextField()
-    points = models.PositiveIntegerField()
+    name = CharField(max_length=200)
+    description = TextField()
+    points = PositiveIntegerField()
 
     def __str__(self):
         return self.name
 
 
-class Schedule(models.Model):
-    start = models.DateField()
-    end = models.DateField()
-    weekday = ArrayField(models.IntegerField(choices=DayOfWeek.choices))
-    periods = models.ManyToManyField("Period", through="SchedulePeriod")
-    priority = models.IntegerField()
+class Schedule(Model):
+    start = DateField()
+    end = DateField()
+    weekday = ArrayField(IntegerField(choices=DayOfWeek.choices))
+    periods = ManyToManyField("Period", through="SchedulePeriod")
+    priority = IntegerField()
 
 
-class Period(models.Model):
-    id = models.CharField(max_length=200, primary_key=True)
-    name = models.CharField(max_length=200)
-    customizable = models.BooleanField()
+class Period(Model):
+    id = CharField(max_length=200, primary_key=True)
+    name = CharField(max_length=200)
+    customizable = BooleanField()
 
 
-class SchedulePeriod(models.Model):
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
-    period = models.ForeignKey(Period, on_delete=models.CASCADE)
+class SchedulePeriod(Model):
+    schedule = ForeignKey(Schedule, on_delete=CASCADE)
+    period = ForeignKey(Period, on_delete=CASCADE)
 
-    start = models.TimeField()
-    end = models.TimeField()
+    start = TimeField()
+    end = TimeField()
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
