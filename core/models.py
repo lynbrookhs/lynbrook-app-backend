@@ -1,10 +1,10 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
-from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django_better_admin_arrayfield.models.fields import ArrayField
 from rest_framework.authtoken.models import Token
 
 
@@ -124,6 +124,28 @@ class Prize(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Schedule(models.Model):
+    start = models.DateField()
+    end = models.DateField()
+    weekday = ArrayField(models.IntegerField(choices=DayOfWeek.choices))
+    periods = models.ManyToManyField("Period", through="SchedulePeriod")
+    priority = models.IntegerField()
+
+
+class Period(models.Model):
+    id = models.CharField(max_length=200, primary_key=True)
+    name = models.CharField(max_length=200)
+    customizable = models.BooleanField()
+
+
+class SchedulePeriod(models.Model):
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE)
+    period = models.ForeignKey(Period, on_delete=models.CASCADE)
+
+    start = models.TimeField()
+    end = models.TimeField()
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
