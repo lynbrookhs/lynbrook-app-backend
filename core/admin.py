@@ -30,6 +30,12 @@ class OrganizationAdmin(admin.ModelAdmin):
 #     list_filter = ("post__organization",)
 
 
+@admin.register(Period)
+class PeriodAdmin(admin.ModelAdmin):
+    list_display = ("id", "name", "customizable")
+    list_editable = ("customizable",)
+
+
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     class InlinePollAdmin(admin.StackedInline, DynamicArrayMixin):
