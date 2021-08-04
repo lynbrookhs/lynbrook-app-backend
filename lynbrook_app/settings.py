@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_better_admin_arrayfield",
+    "rules",
     "rest_framework.authtoken",
     "rest_framework",
     "core",
@@ -133,10 +134,14 @@ STATIC_URL = "/static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Custom things
+
 AUTH_USER_MODEL = "core.User"
 
-# Django Rest Framework
-# https://www.django-rest-framework.org/
+AUTHENTICATION_BACKENDS = [
+    "rules.permissions.ObjectPermissionBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
