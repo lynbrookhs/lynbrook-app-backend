@@ -1,24 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
-from django.db.models import (
-    CASCADE,
-    BooleanField,
-    CharField,
-    CheckConstraint,
-    DateField,
-    DateTimeField,
-    ForeignKey,
-    IntegerChoices,
-    IntegerField,
-    ManyToManyField,
-    Model,
-    PositiveIntegerField,
-    Q,
-    TextField,
-    TimeField,
-    URLField,
-)
+from django.db.models import *
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django_better_admin_arrayfield.models.fields import ArrayField
