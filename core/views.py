@@ -1,11 +1,10 @@
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets
 
-from .models import Event, Organization, Poll, Post, Prize, Schedule
+from .models import Event, Organization, Post, Prize, Schedule
 from .serializers import (
     EventSerializer,
     OrganizationSerializer,
-    PollSerializer,
     PostSerializer,
     PrizeSerializer,
     ScheduleSerializer,
@@ -13,36 +12,38 @@ from .serializers import (
 )
 
 
-class UserViewSet(viewsets.ModelViewSet):
+class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = get_user_model().objects.all()
     serializer_class = UserSerializer
 
 
-class OrganizationViewSet(viewsets.ModelViewSet):
+class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
 
 
-class PostViewSet(viewsets.ModelViewSet):
-    queryset = Post.objects.all()
+class PostViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PostSerializer
 
-
-class PollViewSet(viewsets.ModelViewSet):
-    queryset = Poll.objects.all()
-    serializer_class = PollSerializer
+    def get_queryset(self):
+        return Post.objects.filter(organization__user=self.request.user)
 
 
-class EventViewSet(viewsets.ModelViewSet):
-    queryset = Event.objects.all()
+class EventViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = EventSerializer
 
+    def get_queryset(self):
+        return Event.objects.filter(organization__user=self.request.user)
 
-class PrizeViewSet(viewsets.ModelViewSet):
+
+class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Prize.objects.all()
     serializer_class = PrizeSerializer
 
+    def get_queryset(self):
+        return Prize.objects.filter(organization__user=self.request.user)
 
-class ScheduleViewSet(viewsets.ModelViewSet):
+
+class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Schedule.objects.all()
     serializer_class = ScheduleSerializer

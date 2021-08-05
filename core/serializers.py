@@ -10,11 +10,13 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ("id", "email", "first_name", "last_name", "grad_year", "is_staff", "is_superuser")
 
 
-class OrganizationSerializer(serializers.ModelSerializer):
+class BaseOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = ("id", "url", "name", "type", "advisors", "admins", "day", "time", "link")
 
+
+class OrganizationSerializer(BaseOrganizationSerializer):
     advisors = UserSerializer(many=True, read_only=True)
     admins = UserSerializer(many=True, read_only=True)
 
@@ -30,17 +32,16 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = ("organization", "title", "date", "content", "published", "poll_set")
 
-    organization = OrganizationSerializer(read_only=True)
+    organization = BaseOrganizationSerializer(read_only=True)
     poll_set = PollSerializer(many=True, read_only=True)
 
 
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = Event
-        fields = ("organization", "name", "description", "start", "end", "points", "code", "users")
+        fields = ("organization", "name", "description", "start", "end", "points", "code")
 
-    organization = OrganizationSerializer(read_only=True)
-    users = UserSerializer(many=True, read_only=True)
+    organization = BaseOrganizationSerializer(read_only=True)
 
 
 class PrizeSerializer(serializers.ModelSerializer):
@@ -48,7 +49,7 @@ class PrizeSerializer(serializers.ModelSerializer):
         model = Prize
         fields = ("organization", "name", "description", "points")
 
-    organization = OrganizationSerializer(read_only=True)
+    organization = BaseOrganizationSerializer(read_only=True)
 
 
 class PeriodSerializer(serializers.ModelSerializer):
