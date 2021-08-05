@@ -23,15 +23,14 @@ class SchoologyOAuth(BaseOAuth1):
         ("building_id", "building_id"),
         ("username", "username"),
         ("picture_url", "picture_url"),
-        ("grad_year", "grad_year"),
     ]
 
     def get_user_details(self, data):
         return {
-            "username": None,
+            "email": data["primary_email"],
             "first_name": data["name_first_preferred"] or data["name_first"],
             "last_name": data["name_last"],
-            "email": data["primary_email"],
+            "grad_year": int(data["grad_year"]),
         }
 
     def user_data(self, access_token, *args, **kwargs):

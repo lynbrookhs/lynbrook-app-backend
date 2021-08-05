@@ -1,11 +1,16 @@
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db.models import *
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.models.fields import ArrayField
+
+USER_MODEL = settings.AUTH_USER_MODEL
 
 
 class DayOfWeek(IntegerChoices):
@@ -56,19 +61,23 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ["grad_year"]
     objects = UserManager()
 
     username = None
     email = EmailField(_("email address"), unique=True)
+    grad_year = IntegerField()
     organizations = ManyToManyField("Organization", through="Membership")
 
 
 class Organization(Model):
     name = CharField(max_length=200)
     type = IntegerField(choices=OrganizationType.choices)
-    advisors = ManyToManyField(settings.AUTH_USER_MODEL, related_name="advisor_organization_set")
-    admins = ManyToManyField(settings.AUTH_USER_MODEL, related_name="admin_organization_set")
+    advisors = ManyToManyField(USER_MODEL, related_name="advisor_organization_set", blank=True)
+    admins = ManyToManyField(USER_MODEL, related_name="admin_organization_set", blank=True)
+
+    required = BooleanField(default=False)
+    required_grad_year = IntegerField(null=True, blank=True)
 
     day = IntegerField(choices=DayOfWeek.choices, null=True, blank=True)
     time = TimeField(null=True, blank=True)
@@ -81,7 +90,7 @@ class Organization(Model):
 class Membership(Model):
     user = ForeignKey(User, on_delete=CASCADE)
     organization = ForeignKey(Organization, on_delete=CASCADE)
-    points = PositiveIntegerField()
+    points = PositiveIntegerField(default=0)
 
 
 class Event(Model):
@@ -94,7 +103,7 @@ class Event(Model):
 
     points = PositiveIntegerField()
     code = PositiveIntegerField()
-    users = ManyToManyField(settings.AUTH_USER_MODEL)
+    users = ManyToManyField(USER_MODEL, blank=True)
 
     def __str__(self):
         return self.name
@@ -176,3 +185,24 @@ class SchedulePeriod(Model):
 
     start = TimeField()
     end = TimeField()
+
+
+@receiver(post_save, sender=USER_MODEL)
+def add_required_orgs(sender, instance=None, **kwargs):
+    orgs = Organization.objects.filter(Q(required=True) | Q(required_grad_year=instance.grad_year))
+    remove_orgs = Organization.objects.exclude(required_grad_year__isnull=True)
+    remove_orgs = remove_orgs.exclude(required_grad_year=instance.grad_year)
+    instance.organizations.add(*orgs)
+    instance.organizations.remove(*remove_orgs)
+
+
+@receiver(post_save, sender=Organization)
+def add_required_users(sender, instance=None, **kwargs):
+    if instance.required:
+        users = get_user_model().objects.all()
+    elif instance.required_grad_year is not None:
+        users = get_user_model().objects.filter(grad_year=instance.required_grad_year)
+    else:
+        return
+
+    instance.user_set.add(*users)

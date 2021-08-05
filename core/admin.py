@@ -3,25 +3,28 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 
-from .models import Event, Organization, Period, Poll, Post, Prize, Schedule, SchedulePeriod, User
+from .models import *
 
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    class MembershipAdmin(admin.StackedInline, DynamicArrayMixin):
+        model = Membership
+        extra = 0
+
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        (_("Personal info"), {"fields": ("first_name", "last_name")}),
-        (
-            _("Permissions"),
-            {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")},
-        ),
-        (_("Important dates"), {"fields": ("last_login", "date_joined")}),
+        (_("Personal info"), {"fields": ("first_name", "last_name", "grad_year")}),
+        (_("Permissions"), {"fields": ("is_active", "is_staff", "is_superuser")}),
     )
-    add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),)
+    add_fieldsets = (
+        (None, {"classes": ("wide",), "fields": ("email", "grad_year", "password1", "password2")}),
+    )
     list_display = ("email", "first_name", "last_name", "is_staff")
-    list_filter = ("is_staff", "is_superuser", "is_active", "groups")
+    list_filter = ("is_staff", "is_superuser", "grad_year")
     search_fields = ("email", "first_name", "last_name")
-    ordering = ("email",)
+    ordering = None
+    inlines = (MembershipAdmin,)
 
 
 @admin.register(Event)

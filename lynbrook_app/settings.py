@@ -162,6 +162,10 @@ DJOSER = {
         "http://localhost:8000",
         "http://localhost:8000/api/auth/o/schoology/",
     ],
+    "SERIALIZERS": {
+        "user": "core.serializers.UserSerializer",
+        "current_user": "core.serializers.UserSerializer",
+    },
 }
 
 SOCIAL_AUTH_SCHOOLOGY_KEY = "83262f9c35e0bb2de8450af925c59d6006020f3b5"

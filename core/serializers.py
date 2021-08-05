@@ -7,7 +7,7 @@ from .models import Event, Organization, Period, Poll, Post, Prize, Schedule, Sc
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ("id", "is_superuser", "username", "first_name", "last_name")
+        fields = ("id", "email", "first_name", "last_name", "grad_year", "is_staff", "is_superuser")
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
