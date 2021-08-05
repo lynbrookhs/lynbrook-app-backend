@@ -4,6 +4,7 @@ from django.core.validators import MinValueValidator
 from django.db.models import *
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.models.fields import ArrayField
 from rest_framework.authtoken.models import Token
 
@@ -30,7 +31,12 @@ class PollType(IntegerChoices):
 
 
 class User(AbstractUser):
+    username = None
+    email = EmailField(_("email address"), unique=True)
     organizations = ManyToManyField("Organization", through="Membership")
+
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
 
 
 class Organization(Model):

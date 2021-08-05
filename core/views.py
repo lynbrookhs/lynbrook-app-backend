@@ -1,15 +1,15 @@
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets
 
-from .models import Organization, Post, Poll, Event, Prize, Schedule
+from .models import Event, Organization, Poll, Post, Prize, Schedule
 from .serializers import (
-    OrganizationSerializer,
-    UserSerializer,
-    PostSerializer,
-    PollSerializer,
     EventSerializer,
+    OrganizationSerializer,
+    PollSerializer,
+    PostSerializer,
     PrizeSerializer,
     ScheduleSerializer,
+    UserSerializer,
 )
 
 
