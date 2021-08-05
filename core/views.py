@@ -26,14 +26,14 @@ class PostViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PostSerializer
 
     def get_queryset(self):
-        return Post.objects.filter(organization__user=self.request.user)
+        return Post.objects.filter(organization__users=self.request.user)
 
 
 class EventViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = EventSerializer
 
     def get_queryset(self):
-        return Event.objects.filter(organization__user=self.request.user)
+        return Event.objects.filter(organization__users=self.request.user)
 
 
 class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
@@ -41,7 +41,7 @@ class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = PrizeSerializer
 
     def get_queryset(self):
-        return Prize.objects.filter(organization__user=self.request.user)
+        return Prize.objects.filter(organization__users=self.request.user)
 
 
 class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):

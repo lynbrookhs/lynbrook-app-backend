@@ -30,10 +30,10 @@ class PollSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
-        fields = ("organization", "title", "date", "content", "published", "poll_set")
+        fields = ("organization", "title", "date", "content", "published", "polls")
 
     organization = BaseOrganizationSerializer(read_only=True)
-    poll_set = PollSerializer(many=True, read_only=True)
+    polls = PollSerializer(many=True, read_only=True)
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -69,6 +69,6 @@ class SchedulePeriodSerializer(serializers.ModelSerializer):
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
-        fields = ("start", "end", "weekday", "scheduleperiod_set", "priority")
+        fields = ("start", "end", "weekday", "periods", "priority")
 
-    scheduleperiod_set = SchedulePeriodSerializer(many=True, read_only=True)
+    periods = SchedulePeriodSerializer(many=True, read_only=True)

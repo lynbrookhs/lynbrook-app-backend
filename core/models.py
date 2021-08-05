@@ -67,14 +67,14 @@ class User(AbstractUser):
     username = None
     email = EmailField(_("email address"), unique=True)
     grad_year = IntegerField()
-    organizations = ManyToManyField("Organization", through="Membership")
+    organizations = ManyToManyField("Organization", through="Membership", related_name="users")
 
 
 class Organization(Model):
     name = CharField(max_length=200)
     type = IntegerField(choices=OrganizationType.choices)
-    advisors = ManyToManyField(USER_MODEL, related_name="advisor_organization_set", blank=True)
-    admins = ManyToManyField(USER_MODEL, related_name="admin_organization_set", blank=True)
+    advisors = ManyToManyField(USER_MODEL, related_name="advisor_organizations", blank=True)
+    admins = ManyToManyField(USER_MODEL, related_name="admin_organizations", blank=True)
 
     required = BooleanField(default=False)
     required_grad_year = IntegerField(null=True, blank=True)
@@ -88,13 +88,13 @@ class Organization(Model):
 
 
 class Membership(Model):
-    user = ForeignKey(User, on_delete=CASCADE)
-    organization = ForeignKey(Organization, on_delete=CASCADE)
+    user = ForeignKey(User, on_delete=CASCADE, related_name="memberships")
+    organization = ForeignKey(Organization, on_delete=CASCADE, related_name="memberships")
     points = PositiveIntegerField(default=0)
 
 
 class Event(Model):
-    organization = ForeignKey(Organization, on_delete=CASCADE)
+    organization = ForeignKey(Organization, on_delete=CASCADE, related_name="events")
 
     name = CharField(max_length=200)
     description = TextField()
@@ -103,14 +103,14 @@ class Event(Model):
 
     points = PositiveIntegerField()
     code = PositiveIntegerField()
-    users = ManyToManyField(USER_MODEL, blank=True)
+    users = ManyToManyField(USER_MODEL, blank=True, related_name="events")
 
     def __str__(self):
         return self.name
 
 
 class Post(Model):
-    organization = ForeignKey(Organization, on_delete=CASCADE)
+    organization = ForeignKey(Organization, on_delete=CASCADE, related_name="posts")
     title = CharField(max_length=200)
     date = DateTimeField(auto_now=True)
     content = TextField()
@@ -142,7 +142,7 @@ class Poll(Model):
             )
         ]
 
-    post = ForeignKey(Post, on_delete=CASCADE)
+    post = ForeignKey(Post, on_delete=CASCADE, related_name="polls")
     type = IntegerField(choices=PollType.choices)
     description = TextField()
 
@@ -155,7 +155,7 @@ class Poll(Model):
 
 
 class Prize(Model):
-    organization = ForeignKey(Organization, on_delete=CASCADE)
+    organization = ForeignKey(Organization, on_delete=CASCADE, related_name="prizes")
 
     name = CharField(max_length=200)
     description = TextField()
@@ -169,7 +169,7 @@ class Schedule(Model):
     start = DateField()
     end = DateField()
     weekday = ArrayField(IntegerField(choices=DayOfWeek.choices))
-    periods = ManyToManyField("Period", through="SchedulePeriod")
+    # periods = ManyToManyField("Period", through="SchedulePeriod", related_name="+")
     priority = IntegerField()
 
 
@@ -180,8 +180,8 @@ class Period(Model):
 
 
 class SchedulePeriod(Model):
-    schedule = ForeignKey(Schedule, on_delete=CASCADE)
-    period = ForeignKey(Period, on_delete=CASCADE)
+    schedule = ForeignKey(Schedule, on_delete=CASCADE, related_name="periods")
+    period = ForeignKey(Period, on_delete=CASCADE, related_name="+")
 
     start = TimeField()
     end = TimeField()
@@ -197,12 +197,12 @@ def add_required_orgs(sender, instance=None, **kwargs):
 
 
 @receiver(post_save, sender=Organization)
-def add_required_users(sender, instance=None, **kwargs):
-    if instance.required:
+def add_required_users(sender, org=None, **kwargs):
+    if org.required:
         users = get_user_model().objects.all()
-    elif instance.required_grad_year is not None:
-        users = get_user_model().objects.filter(grad_year=instance.required_grad_year)
+    elif org.required_grad_year is not None:
+        users = get_user_model().objects.filter(grad_year=org.required_grad_year)
     else:
         return
 
-    instance.user_set.add(*users)
+    org.users.add(*users)
