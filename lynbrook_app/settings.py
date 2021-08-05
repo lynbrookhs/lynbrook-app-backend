@@ -10,8 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -34,20 +34,16 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
-    "django.contrib.sites",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_better_admin_arrayfield",
-    "allauth",
-    "allauth.account",
-    "allauth.socialaccount",
-    "allauth.socialaccount.providers.oauth",
-    "core.schoology",
+    "social_django",
+    # "core.schoology",
     "rules",
-    "rest_framework.authtoken",
     "rest_framework",
+    "djoser",
     "core",
 ]
 
@@ -142,18 +138,18 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Custom things
 
-SITE_ID = 1
-
 AUTH_USER_MODEL = "core.User"
+SOCIAL_AUTH_USER_MODEL = AUTH_USER_MODEL
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
-    "allauth.account.auth_backends.AuthenticationBackend",
+    "core.schoology.SchoologyOAuth",
+    # "allauth.account.auth_backends.AuthenticationBackend",
 ]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.TokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
@@ -161,8 +157,14 @@ REST_FRAMEWORK = {
     ],
 }
 
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = None
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_AUTHENTICATION_METHOD = "email"
+DJOSER = {
+    "SOCIAL_AUTH_ALLOWED_REDIRECT_URIS": [
+        "http://localhost:8000",
+        "http://localhost:8000/api/auth/o/schoology/",
+    ],
+}
+
+SOCIAL_AUTH_SCHOOLOGY_KEY = "83262f9c35e0bb2de8450af925c59d6006020f3b5"
+SOCIAL_AUTH_SCHOOLOGY_SECRET = "44c0847184870189b804eb70d7bbc177"
+SOCIAL_AUTH_USER_FIELDS = ["email"]
+SOCIAL_AUTH_USERNAME_IS_FULL_EMAIL = True
