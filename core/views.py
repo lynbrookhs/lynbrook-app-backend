@@ -56,4 +56,10 @@ class CurrentScheduleView(views.APIView):
         serializer = serializers.NestedScheduleSerializer(
             objects, context={"request": request}, many=True
         )
-        return Response(serializer.data)
+        return Response(
+            {
+                "start": week_start,
+                "end": week_start + timedelta(days=6),
+                "weekdays": serializer.data,
+            }
+        )
