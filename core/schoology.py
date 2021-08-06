@@ -22,7 +22,6 @@ class SchoologyOAuth(BaseOAuth1):
         ("school_id", "school_id"),
         ("building_id", "building_id"),
         ("username", "username"),
-        ("picture_url", "picture_url"),
     ]
 
     def get_user_details(self, data):
@@ -31,6 +30,7 @@ class SchoologyOAuth(BaseOAuth1):
             "first_name": data["name_first_preferred"] or data["name_first"],
             "last_name": data["name_last"],
             "grad_year": int(data["grad_year"]),
+            "picture_url": data["picture_url"],
         }
 
     def user_data(self, access_token, *args, **kwargs):

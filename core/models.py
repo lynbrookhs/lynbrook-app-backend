@@ -68,6 +68,9 @@ class User(AbstractUser):
     email = EmailField(_("email address"), unique=True)
     grad_year = IntegerField()
     organizations = ManyToManyField("Organization", through="Membership", related_name="users")
+    picture_url = URLField(
+        default="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"
+    )
 
 
 class Organization(Model):
