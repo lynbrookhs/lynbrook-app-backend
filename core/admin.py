@@ -82,5 +82,7 @@ class ScheduleAdmin(admin.ModelAdmin, DynamicArrayMixin):
         model = SchedulePeriod
         extra = 0
 
-    list_display = ("start", "end")
+    list_display = ("name", "start", "end", "weekday", "priority")
     inlines = (InlinePeriodAdmin,)
+    ordering = ("-priority",)
+    save_as = True

@@ -46,6 +46,14 @@ class NestedSchedulePeriodSerializer(serializers.ModelSerializer):
     period = NestedPeriodSerializer()
 
 
+class NestedScheduleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Schedule
+        fields = ("id", "url", "name", "periods")
+
+    periods = NestedSchedulePeriodSerializer(many=True, read_only=True)
+
+
 # Main
 
 
@@ -104,6 +112,6 @@ class PrizeSerializer(serializers.ModelSerializer):
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Schedule
-        fields = ("id", "url", "start", "end", "weekday", "periods", "priority")
+        fields = ("id", "url", "name", "start", "end", "weekday", "periods", "priority")
 
     periods = NestedSchedulePeriodSerializer(many=True, read_only=True)

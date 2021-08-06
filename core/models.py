@@ -1,3 +1,5 @@
+from datetime import date
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import BaseUserManager
@@ -169,17 +171,29 @@ class Prize(Model):
 
 
 class Schedule(Model):
+    name = CharField(max_length=200)
     start = DateField()
     end = DateField()
     weekday = ArrayField(IntegerField(choices=DayOfWeek.choices))
-    # periods = ManyToManyField("Period", through="SchedulePeriod", related_name="+")
     priority = IntegerField()
+
+    @classmethod
+    def get_for_day(cls, day: date):
+        print(day)
+        qs = cls.objects.filter(start__lte=day, end__gte=day, weekday__contains=[day.weekday()])
+        try:
+            return qs.order_by("-priority")[0]
+        except IndexError:
+            return cls(name="No Schedule")
 
 
 class Period(Model):
     id = CharField(max_length=200, primary_key=True)
     name = CharField(max_length=200)
     customizable = BooleanField()
+
+    def __str__(self):
+        return self.name
 
 
 class SchedulePeriod(Model):
