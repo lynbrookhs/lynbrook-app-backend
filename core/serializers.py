@@ -1,74 +1,107 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from .models import Event, Organization, Period, Poll, Post, Prize, Schedule, SchedulePeriod
+from . import models
+
+# Nested
+
+
+class NestedUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ("id", "first_name", "last_name")
+
+
+class NestedOrganizationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Organization
+        fields = ("id", "name")
+
+
+class NestedPollSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Poll
+        fields = ("id", "type", "description", "choices", "min_values", "max_values")
+
+
+class NestedMembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Membership
+        fields = ("organization", "points")
+
+    organization = NestedOrganizationSerializer(read_only=True)
+
+
+class NestedPeriodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Period
+        fields = ("id", "name", "customizable")
+
+
+class NestedSchedulePeriodSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.SchedulePeriod
+        fields = ("start", "end", "period")
+
+    period = NestedPeriodSerializer()
+
+
+# Main
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ("id", "email", "first_name", "last_name", "grad_year", "is_staff", "is_superuser")
+        fields = (
+            "id",
+            "first_name",
+            "last_name",
+            "grad_year",
+            "is_staff",
+            "is_superuser",
+            "memberships",
+        )
+
+    memberships = NestedMembershipSerializer(many=True, read_only=True)
 
 
-class BaseOrganizationSerializer(serializers.ModelSerializer):
+class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Organization
+        model = models.Organization
         fields = ("id", "url", "name", "type", "advisors", "admins", "day", "time", "link")
 
-
-class OrganizationSerializer(BaseOrganizationSerializer):
-    advisors = UserSerializer(many=True, read_only=True)
-    admins = UserSerializer(many=True, read_only=True)
-
-
-class PollSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Poll
-        fields = ("post", "type", "description", "choices", "min_values", "max_values")
+    advisors = NestedUserSerializer(many=True, read_only=True)
+    admins = NestedUserSerializer(many=True, read_only=True)
 
 
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Post
-        fields = ("organization", "title", "date", "content", "published", "polls")
+        model = models.Post
+        fields = ("id", "url", "organization", "title", "date", "content", "published", "polls")
 
-    organization = BaseOrganizationSerializer(read_only=True)
-    polls = PollSerializer(many=True, read_only=True)
+    organization = NestedOrganizationSerializer(read_only=True)
+    polls = NestedPollSerializer(many=True, read_only=True)
 
 
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Event
-        fields = ("organization", "name", "description", "start", "end", "points", "code")
+        model = models.Event
+        fields = ("id", "url", "organization", "name", "description", "start", "end", "points")
 
-    organization = BaseOrganizationSerializer(read_only=True)
+    organization = NestedOrganizationSerializer(read_only=True)
 
 
 class PrizeSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Prize
-        fields = ("organization", "name", "description", "points")
+        model = models.Prize
+        fields = ("id", "url", "organization", "name", "description", "points")
 
-    organization = BaseOrganizationSerializer(read_only=True)
-
-
-class PeriodSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Period
-        fields = ("id", "name", "customizable")
-
-
-class SchedulePeriodSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SchedulePeriod
-        fields = ("start", "end", "period")
-
-    period = PeriodSerializer()
+    organization = NestedOrganizationSerializer(read_only=True)
 
 
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Schedule
-        fields = ("start", "end", "weekday", "periods", "priority")
+        model = models.Schedule
+        fields = ("id", "url", "start", "end", "weekday", "periods", "priority")
 
-    periods = SchedulePeriodSerializer(many=True, read_only=True)
+    periods = NestedSchedulePeriodSerializer(many=True, read_only=True)

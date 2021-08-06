@@ -1,49 +1,40 @@
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets
 
-from .models import Event, Organization, Post, Prize, Schedule
-from .serializers import (
-    EventSerializer,
-    OrganizationSerializer,
-    PostSerializer,
-    PrizeSerializer,
-    ScheduleSerializer,
-    UserSerializer,
-)
+from . import models, serializers
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = get_user_model().objects.all()
-    serializer_class = UserSerializer
+    serializer_class = serializers.UserSerializer
 
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Organization.objects.all()
-    serializer_class = OrganizationSerializer
+    queryset = models.Organization.objects.all()
+    serializer_class = serializers.OrganizationSerializer
 
 
 class PostViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = PostSerializer
+    serializer_class = serializers.PostSerializer
 
     def get_queryset(self):
-        return Post.objects.filter(organization__users=self.request.user)
+        return models.Post.objects.filter(organization__users=self.request.user)
 
 
 class EventViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = EventSerializer
+    serializer_class = serializers.EventSerializer
 
     def get_queryset(self):
-        return Event.objects.filter(organization__users=self.request.user)
+        return models.Event.objects.filter(organization__users=self.request.user)
 
 
 class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Prize.objects.all()
-    serializer_class = PrizeSerializer
+    serializer_class = serializers.PrizeSerializer
 
     def get_queryset(self):
-        return Prize.objects.filter(organization__users=self.request.user)
+        return models.Prize.objects.filter(organization__users=self.request.user)
 
 
 class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Schedule.objects.all()
-    serializer_class = ScheduleSerializer
+    queryset = models.Schedule.objects.all()
+    serializer_class = serializers.ScheduleSerializer
