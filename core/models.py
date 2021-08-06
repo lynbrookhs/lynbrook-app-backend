@@ -66,7 +66,7 @@ class User(AbstractUser):
 
     username = None
     email = EmailField(_("email address"), unique=True)
-    grad_year = IntegerField()
+    grad_year = IntegerField(null=True)
     organizations = ManyToManyField("Organization", through="Membership", related_name="users")
     picture_url = URLField(
         default="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"
