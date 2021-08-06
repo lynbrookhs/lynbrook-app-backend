@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 import os
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,9 +41,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_better_admin_arrayfield",
     "social_django",
-    # "core.schoology",
     "rules",
     "rest_framework",
+    "corsheaders",
     "djoser",
     "core",
 ]
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -160,7 +162,7 @@ REST_FRAMEWORK = {
 DJOSER = {
     "SOCIAL_AUTH_ALLOWED_REDIRECT_URIS": [
         "http://localhost:8000",
-        "http://localhost:8000/api/auth/o/schoology/",
+        "https://auth.expo.io/@mcparadip/lhs-app",
     ],
     "SERIALIZERS": {
         "user": "core.serializers.UserSerializer",
@@ -172,3 +174,7 @@ SOCIAL_AUTH_SCHOOLOGY_KEY = os.environ["SCHOOLOGY_API_KEY"]
 SOCIAL_AUTH_SCHOOLOGY_SECRET = os.environ["SCHOOLOGY_API_SECRET"]
 SOCIAL_AUTH_USER_FIELDS = ["email"]
 SOCIAL_AUTH_USERNAME_IS_FULL_EMAIL = True
+
+SIMPLE_JWT = {"ACCESS_TOKEN_LIFETIME": timedelta(weeks=4)}
+
+CORS_ALLOW_ALL_ORIGINS = True

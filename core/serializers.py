@@ -56,6 +56,7 @@ class UserSerializer(serializers.ModelSerializer):
             "id",
             "first_name",
             "last_name",
+            "email",
             "grad_year",
             "is_staff",
             "is_superuser",

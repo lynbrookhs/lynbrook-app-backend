@@ -16,6 +16,7 @@ django-dotenv = "^1.4.2"
 django-better-admin-arrayfield = "^1.4.2"
 rules = "^3.0"
 djoser = "^2.1.0"
+django-cors-headers = "^3.7.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.7b0"
