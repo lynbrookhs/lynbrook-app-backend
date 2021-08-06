@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from rest_framework import viewsets
+from rest_framework import filters, viewsets
 
 from . import models, serializers
 
@@ -16,6 +16,8 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PostViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.PostSerializer
+    filter_backends = (filters.OrderingFilter,)
+    ordering = ("-date",)
 
     def get_queryset(self):
         return models.Post.objects.filter(organization__users=self.request.user)
