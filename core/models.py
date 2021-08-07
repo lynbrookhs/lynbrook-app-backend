@@ -100,7 +100,7 @@ class Organization(Model):
     time = TimeField(null=True, blank=True)
     link = URLField(null=True, blank=True)
 
-    ical_links = ArrayField(URLField(), blank=True)
+    ical_links = ArrayField(URLField(), blank=True, default=list)
 
     def __str__(self):
         return self.name

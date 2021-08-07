@@ -26,7 +26,11 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.OrganizationSerializer
 
     def get_queryset(self):
-        return models.Organization.objects.filter(users=self.request.user)
+        if "clubs" in self.request.query_params:
+            return models.Organization.objects.filter(type=3)
+        if "user" in self.request.query_params:
+            return models.Organization.objects.filter(users=self.request.user)
+        return models.Organization.objects.all()
 
 
 class PostViewSet(viewsets.ReadOnlyModelViewSet):
