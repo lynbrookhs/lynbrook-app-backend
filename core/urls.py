@@ -11,6 +11,7 @@ router.register("prizes", views.PrizeViewSet, basename="prize")
 router.register("schedules", views.ScheduleViewSet, basename="schedule")
 
 urlpatterns = [
-    path("schedules/current/", views.CurrentScheduleView.as_view()),
-    path("", include(router.urls)),
+    path("api/schedules/current/", views.CurrentScheduleView.as_view()),
+    path("api/", include(router.urls)),
+    path("", views.IndexView.as_view()),
 ]

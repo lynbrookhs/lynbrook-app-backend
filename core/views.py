@@ -1,11 +1,16 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
+from django.views.generic.base import TemplateView
 from rest_framework import filters, pagination, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from . import models, serializers
+
+
+class IndexView(TemplateView):
+    template_name = "index.html"
 
 
 class SmallPages(pagination.PageNumberPagination):
