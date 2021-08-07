@@ -27,7 +27,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "t", "1")
 
-ALLOWED_HOSTS = [".localhost", "127.0.0.1", "[::1]"]
+ALLOWED_HOSTS = ["lynbrookasb.org", "www.lynbrookasb.org"]
 
 
 # Application definition
