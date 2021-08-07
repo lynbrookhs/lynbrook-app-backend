@@ -43,6 +43,8 @@ class EventViewSet(viewsets.ReadOnlyModelViewSet):
 
 class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.PrizeSerializer
+    filter_backends = (filters.OrderingFilter,)
+    ordering = ("points",)
 
     def get_queryset(self):
         return models.Prize.objects.filter(organization__users=self.request.user)
