@@ -15,7 +15,7 @@ class NestedUserSerializer(serializers.ModelSerializer):
 class NestedOrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Organization
-        fields = ("id", "name")
+        fields = ("id", "name", "type")
 
 
 class NestedPollSerializer(serializers.ModelSerializer):
