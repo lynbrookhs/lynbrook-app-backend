@@ -162,11 +162,14 @@ REST_FRAMEWORK = {
     ],
 }
 
+
+class AllList(list):
+    def __contains__(self, o: object) -> bool:
+        return True
+
+
 DJOSER = {
-    "SOCIAL_AUTH_ALLOWED_REDIRECT_URIS": [
-        "http://localhost:8000",
-        "https://auth.expo.io/@mcparadip/lhs-app",
-    ],
+    "SOCIAL_AUTH_ALLOWED_REDIRECT_URIS": AllList(),
     "SERIALIZERS": {
         "user": "core.serializers.UserSerializer",
         "current_user": "core.serializers.UserSerializer",
