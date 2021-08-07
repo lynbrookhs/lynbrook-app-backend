@@ -1,11 +1,15 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
-from rest_framework import filters, generics, views, viewsets
+from rest_framework import filters, pagination, views, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from . import models, serializers
+
+
+class SmallPages(pagination.PageNumberPagination):
+    page_size = 20
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
@@ -14,14 +18,17 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Organization.objects.all()
     serializer_class = serializers.OrganizationSerializer
+
+    def get_queryset(self):
+        return models.Organization.objects.filter(users=self.request.user)
 
 
 class PostViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.PostSerializer
     filter_backends = (filters.OrderingFilter,)
     ordering = ("-date",)
+    pagination_class = SmallPages
 
     def get_queryset(self):
         return models.Post.objects.filter(organization__users=self.request.user)
@@ -50,12 +57,8 @@ class CurrentScheduleView(views.APIView):
     def get(self, request):
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
-        objects = [
-            models.Schedule.get_for_day(week_start + timedelta(days=x)) for x in models.DayOfWeek
-        ]
-        serializer = serializers.NestedScheduleSerializer(
-            objects, context={"request": request}, many=True
-        )
+        objects = [models.Schedule.get_for_day(week_start + timedelta(days=x)) for x in models.DayOfWeek]
+        serializer = serializers.NestedScheduleSerializer(objects, context={"request": request}, many=True)
         return Response(
             {
                 "start": week_start,
