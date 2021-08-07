@@ -78,7 +78,20 @@ class UserSerializer(serializers.ModelSerializer):
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Organization
-        fields = ("id", "url", "name", "type", "advisors", "admins", "day", "time", "link", "ical_links")
+        fields = (
+            "id",
+            "url",
+            "name",
+            "type",
+            "advisors",
+            "admins",
+            "day",
+            "time",
+            "link",
+            "ical_links",
+            "description",
+            "category",
+        )
 
     advisors = NestedUserSerializer(many=True, read_only=True)
     admins = NestedUserSerializer(many=True, read_only=True)
