@@ -66,14 +66,14 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
 
 class CurrentScheduleView(views.APIView):
     def get(self, request):
-        today = date.today()
-        week_start = today - timedelta(days=today.weekday())
-        objects = [models.Schedule.get_for_day(week_start + timedelta(days=x)) for x in models.DayOfWeek]
+        start = date.today() + timedelta(days=2)
+        start = start - timedelta(days=start.weekday())
+        objects = [models.Schedule.get_for_day(start + timedelta(days=x)) for x in models.DayOfWeek]
         serializer = serializers.NestedScheduleSerializer(objects, context={"request": request}, many=True)
         return Response(
             {
-                "start": week_start,
-                "end": week_start + timedelta(days=6),
+                "start": start,
+                "end": start + timedelta(days=6),
                 "weekdays": serializer.data,
             }
         )
