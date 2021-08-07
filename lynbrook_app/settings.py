@@ -29,6 +29,9 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "t", "1")
 
 ALLOWED_HOSTS = ["lynbrookasb.org", "www.lynbrookasb.org"]
 
+if DEBUG:
+    ALLOWED_HOSTS += [".localhost", "127.0.0.1", "[::1]"]
+
 
 # Application definition
 
