@@ -41,7 +41,7 @@ class EventAdmin(admin.ModelAdmin):
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ("name", "type", "day", "time", "link")
-    list_filter = ("type", "day")
+    list_filter = ("type", "day", "category")
 
 
 # @admin.register(Poll)
