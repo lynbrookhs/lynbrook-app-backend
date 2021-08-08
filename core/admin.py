@@ -5,6 +5,8 @@ from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 
 from .models import *
 
+admin.site.site_header = "Lynbrook ASB"
+
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
