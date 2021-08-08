@@ -7,18 +7,55 @@
 
     <title>Lynbrook ASB</title>
 
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
+    />
+
     <style>
       body {
-        margin: 0;
         height: 100vh;
         display: flex;
+        flex-direction: column;
         justify-content: center;
         align-items: center;
+        gap: 0.5rem;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+          "Segoe UI Symbol";
+        line-height: 150%;
+        text-align: center;
+      }
+
+      a {
+        color: hsl(217, 71%, 53%);
+        text-decoration: none;
+      }
+
+      a:visited {
+        color: hsl(217, 71%, 53%);
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      #logo {
+        margin-bottom: 1rem;
       }
     </style>
   </head>
 
   <body>
-    <img src="https://i.imgur.com/n2GazsY.png" height="81" />
+    <img src="https://i.imgur.com/n2GazsY.png" height="81" id="logo" />
+    <p>
+      Did you mean to visit
+      <a href="https://lynbrookasb.com/">lynbrookasb.com</a>?
+    </p>
+    <p>Or perhaps the <a href="/admin/">Admin Page</a>?</p>
   </body>
 </html>
