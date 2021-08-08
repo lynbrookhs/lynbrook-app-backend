@@ -85,7 +85,7 @@ class PrizeAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 @admin.register(Schedule)
 class ScheduleAdmin(admin.ModelAdmin, DynamicArrayMixin):
-    class InlinePeriodAdmin(admin.StackedInline, DynamicArrayMixin):
+    class InlinePeriodAdmin(admin.TabularInline, DynamicArrayMixin):
         model = SchedulePeriod
         extra = 0
 
