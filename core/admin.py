@@ -9,7 +9,7 @@ admin.site.site_header = "Lynbrook ASB"
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
     class MembershipAdmin(admin.StackedInline, DynamicArrayMixin):
         model = Membership
         extra = 0
@@ -30,7 +30,7 @@ class UserAdmin(BaseUserAdmin):
 
 
 @admin.register(Event)
-class EventAdmin(admin.ModelAdmin):
+class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     date_hierarchy = "start"
     list_display = ("name", "organization", "start", "end", "points", "user_count")
     list_filter = ("organization",)
@@ -41,7 +41,7 @@ class EventAdmin(admin.ModelAdmin):
 
 
 @admin.register(Organization)
-class OrganizationAdmin(admin.ModelAdmin):
+class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("name", "type", "day", "time", "link")
     list_filter = ("type", "day", "category")
 
@@ -53,13 +53,13 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 
 @admin.register(Period)
-class PeriodAdmin(admin.ModelAdmin):
+class PeriodAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("id", "name", "customizable")
     list_editable = ("customizable",)
 
 
 @admin.register(Post)
-class PostAdmin(admin.ModelAdmin):
+class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
     class InlinePollAdmin(admin.StackedInline, DynamicArrayMixin):
         model = Poll
         extra = 0
@@ -73,7 +73,7 @@ class PostAdmin(admin.ModelAdmin):
 
 
 @admin.register(Prize)
-class PrizeAdmin(admin.ModelAdmin):
+class PrizeAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("name", "description", "organization", "points")
     list_filter = ("organization",)
 

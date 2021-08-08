@@ -74,7 +74,7 @@ class User(AbstractUser):
 
     username = None
     email = EmailField(_("email address"), unique=True)
-    grad_year = IntegerField(null=True)
+    grad_year = IntegerField(null=True, blank=True)
     organizations = ManyToManyField("Organization", through="Membership", related_name="users")
     picture_url = URLField(
         default="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"
@@ -117,8 +117,8 @@ class Organization(Model):
     required_grad_year = IntegerField(null=True, blank=True)
 
     name = CharField(max_length=200)
-    description = TextField(null=True)
-    category = IntegerField(choices=ClubCategory.choices, null=True)
+    description = TextField(null=True, blank=True)
+    category = IntegerField(choices=ClubCategory.choices, null=True, blank=True)
 
     day = IntegerField(choices=DayOfWeek.choices, null=True, blank=True)
     time = TimeField(null=True, blank=True)
