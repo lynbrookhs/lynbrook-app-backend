@@ -42,8 +42,13 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    class InlineLinkAdmin(admin.TabularInline, DynamicArrayMixin):
+        model = OrganizationLink
+        extra = 0
+
     list_display = ("name", "type", "day", "time", "link")
     list_filter = ("type", "day", "category")
+    inlines = (InlineLinkAdmin,)
 
 
 # @admin.register(Poll)

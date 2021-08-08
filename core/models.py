@@ -130,6 +130,12 @@ class Organization(Model):
         return self.name
 
 
+class OrganizationLink(Model):
+    organization = ForeignKey(Organization, on_delete=CASCADE, related_name="links")
+    title = CharField(max_length=200)
+    url = URLField()
+
+
 class Membership(Model):
     user = ForeignKey(User, on_delete=CASCADE, related_name="memberships")
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="memberships")
