@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_better_admin_arrayfield",
     "social_django",
-    "rules",
     "rest_framework",
     "corsheaders",
     "djoser",
