@@ -250,10 +250,12 @@ class SchedulePeriod(Model):
 
 @receiver(post_save, sender=USER_MODEL)
 def add_required_orgs(*, sender, instance=None, **kwargs):
-    orgs = Organization.objects.filter(Q(required=True) | Q(required_grad_year=instance.grad_year))
+    q = Q(required=True) | Q(required_grad_year__isnull=False, required_grad_year=instance.grad_year)
+    orgs = Organization.objects.filter(q)
+    instance.organizations.add(*orgs)
+
     remove_orgs = Organization.objects.exclude(required_grad_year__isnull=True)
     remove_orgs = remove_orgs.exclude(required_grad_year=instance.grad_year)
-    instance.organizations.add(*orgs)
     instance.organizations.remove(*remove_orgs)
 
 

@@ -45,9 +45,7 @@ class SchoologyOAuth(BaseOAuth1):
 
         if self.setting("VERIFY_SSL") is not None:
             kwargs.setdefault("verify", self.setting("VERIFY_SSL"))
-        kwargs.setdefault(
-            "timeout", self.setting("REQUESTS_TIMEOUT") or self.setting("URLOPEN_TIMEOUT")
-        )
+        kwargs.setdefault("timeout", self.setting("REQUESTS_TIMEOUT") or self.setting("URLOPEN_TIMEOUT"))
         if self.SEND_USER_AGENT and "User-Agent" not in kwargs["headers"]:
             kwargs["headers"]["User-Agent"] = self.setting("USER_AGENT") or user_agent()
 
