@@ -75,6 +75,12 @@ class UserSerializer(serializers.ModelSerializer):
     memberships = NestedMembershipSerializer(many=True, read_only=True)
 
 
+class OrganizationLinkSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.OrganizationLink
+        fields = ("title", "url")
+
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Organization
@@ -91,10 +97,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "ical_links",
             "description",
             "category",
+            "links",
         )
 
     advisors = NestedUserSerializer(many=True, read_only=True)
     admins = NestedUserSerializer(many=True, read_only=True)
+    links = OrganizationLinkSerializer(many=True, read_only=True)
 
 
 class PostSerializer(serializers.ModelSerializer):
