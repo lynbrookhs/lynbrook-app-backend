@@ -137,8 +137,16 @@ class OrganizationLink(Model):
 
 
 class Membership(Model):
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                name="%(app_label)s_%(class)s_user_organization", fields=("user", "organization")
+            )
+        ]
+
     user = ForeignKey(User, on_delete=CASCADE, related_name="memberships")
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="memberships")
+
     points = PositiveIntegerField(default=0)
 
 

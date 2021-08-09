@@ -17,6 +17,8 @@ django-better-admin-arrayfield = "^1.4.2"
 djoser = "^2.1.0"
 django-cors-headers = "^3.7.0"
 gunicorn = "^20.1.0"
+drf-extensions = "^0.7.1"
+drf-access-policy = "^1.0.1"
 
 [tool.poetry.dev-dependencies]
 black = "^21.7b0"

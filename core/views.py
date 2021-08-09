@@ -1,10 +1,12 @@
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.views.generic.base import TemplateView
-from rest_framework import filters, pagination, views, viewsets
-from rest_framework.decorators import action
+from rest_access_policy import AccessPolicy
+from rest_framework import filters, mixins, pagination, status, views, viewsets
 from rest_framework.response import Response
+from rest_framework_extensions.mixins import NestedViewSetMixin
 
 from . import models, serializers
 
@@ -18,8 +20,57 @@ class SmallPages(pagination.PageNumberPagination):
 
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = get_user_model().objects.all()
+    class UserAccessPolicy(AccessPolicy):
+        statements = [
+            dict(action=["list"], principal="*", effect="allow"),
+            dict(action=["retrieve"], principal="*", effect="allow", condition=["is_user"]),
+        ]
+
+        def is_user(self, request, view, action, *args, **kwargs):
+            return view.get_object() == request.user
+
+        @classmethod
+        def scope_queryset(cls, request, qs):
+            return qs.filter(id=request.user.id)
+
+    permission_classes = (UserAccessPolicy,)
     serializer_class = serializers.UserSerializer
+
+    @property
+    def access_policy(self):
+        return self.permission_classes[0]
+
+    def get_queryset(self):
+        qs = get_user_model().objects.all()
+        if self.action == "list":
+            return self.access_policy.scope_queryset(self.request, qs)
+        else:
+            return qs
+
+
+class MembershipViewSet(
+    NestedViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin
+):
+    queryset = models.Membership.objects.all()
+    lookup_field = "organization"
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return serializers.CreateMembershipSerializer
+        return serializers.MembershipSerializer
+
+    def create(self, request, *args, **kwargs):
+        qdict = self.get_parents_query_dict()
+        user = get_user_model().objects.get(pk=qdict["user"])
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            serializer.save(user=user)
+        except IntegrityError:
+            return Response(status=status.HTTP_409_CONFLICT)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):

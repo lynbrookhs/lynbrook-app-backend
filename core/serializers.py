@@ -114,6 +114,23 @@ class PostSerializer(serializers.ModelSerializer):
     polls = NestedPollSerializer(many=True, read_only=True)
 
 
+class MembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Membership
+        fields = ("organization", "points")
+
+    organization = OrganizationSerializer(read_only=True)
+    points = serializers.IntegerField(read_only=True)
+
+
+class CreateMembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Membership
+        fields = ("organization", "points")
+
+    points = serializers.IntegerField(read_only=True)
+
+
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Event
