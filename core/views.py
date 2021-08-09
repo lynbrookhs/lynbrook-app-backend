@@ -27,7 +27,7 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             dict(action=["retrieve"], principal="*", effect="allow", condition=["is_user"]),
         ]
 
-        def is_user(self, request, view, action, *args, **kwargs):
+        def is_user(self, request, view, *args, **kwargs):
             return view.get_object() == request.user
 
         @classmethod
@@ -57,8 +57,21 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 class MembershipViewSet(
     NestedViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin
 ):
+    class MembersAccessPolicy(AccessPolicy):
+        statements = [
+            dict(action=["*"], principal="*", effect="allow", condition=["is_user"]),
+        ]
+
+        def is_user(self, request, view, *args, **kwargs):
+            qdict = view.get_parents_query_dict()
+            user = get_user_model().objects.get(pk=qdict["user"])
+            return user == request.user
+
+    permission_classes = (MembersAccessPolicy,)
     queryset = models.Membership.objects.all()
     lookup_field = "organization"
+    filter_backends = (filters.OrderingFilter,)
+    ordering = ("organization__type", "organization__name")
 
     def get_parents_query_dict(self):
         kw = super().get_parents_query_dict()
@@ -87,6 +100,8 @@ class MembershipViewSet(
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.OrganizationSerializer
+    filter_backends = (filters.OrderingFilter,)
+    ordering = ("type", "name")
 
     def get_queryset(self):
         if "clubs" in self.request.query_params:
