@@ -90,9 +90,13 @@ class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         if "clubs" in self.request.query_params:
+            # TODO: Deprecated. Remove when app is updated.
             return models.Organization.objects.filter(type=3)
+
         if "user" in self.request.query_params:
+            # TODO: Deprecated. Remove when app is updated.
             return models.Organization.objects.filter(users=self.request.user)
+
         return models.Organization.objects.all()
 
 
