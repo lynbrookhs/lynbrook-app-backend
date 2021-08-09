@@ -1,3 +1,4 @@
+import random
 from datetime import date
 
 from django.conf import settings
@@ -13,6 +14,10 @@ from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.models.fields import ArrayField
 
 USER_MODEL = settings.AUTH_USER_MODEL
+
+
+def random_code():
+    return random.randint(100000, 999999)
 
 
 class DayOfWeek(IntegerChoices):
@@ -159,8 +164,8 @@ class Event(Model):
     end = DateTimeField()
 
     points = PositiveIntegerField()
-    code = PositiveIntegerField()
-    users = ManyToManyField(USER_MODEL, blank=True, related_name="events")
+    code = PositiveIntegerField(default=random_code, editable=False)
+    users = ManyToManyField(USER_MODEL, blank=True, related_name="events", editable=False)
 
     def __str__(self):
         return self.name
