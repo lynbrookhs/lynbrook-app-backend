@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.http import request
 from django.views.generic.base import TemplateView
 from rest_access_policy import AccessPolicy
 from rest_framework import filters, mixins, pagination, status, views, viewsets
@@ -40,6 +41,11 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
     def access_policy(self):
         return self.permission_classes[0]
 
+    def get_object(self):
+        if self.kwargs.get("pk") == "me":
+            self.kwargs["pk"] = self.request.user.id
+        return super().get_object()
+
     def get_queryset(self):
         qs = get_user_model().objects.all()
         if self.action == "list":
@@ -53,6 +59,12 @@ class MembershipViewSet(
 ):
     queryset = models.Membership.objects.all()
     lookup_field = "organization"
+
+    def get_parents_query_dict(self):
+        kw = super().get_parents_query_dict()
+        if kw["user"] == "me":
+            kw["user"] = self.request.user.id
+        return kw
 
     def get_serializer_class(self):
         if self.action == "create":
