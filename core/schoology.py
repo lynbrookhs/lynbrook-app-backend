@@ -30,10 +30,10 @@ class SchoologyOAuth(BaseOAuth1):
         print(data)
         return {
             "email": data["primary_email"],
-            "first_name": data.get("name_first_preferred") or data.get("name_first"),
-            "last_name": data.get("name_last"),
-            "grad_year": int(data.get("grad_year", 0)),
-            "picture_url": data.get("picture_url"),
+            "first_name": data["name_first_preferred"] or data["name_first"],
+            "last_name": data.get["name_last"],
+            "grad_year": int(data["grad_year"] or 0),
+            "picture_url": data["picture_url"],
         }
 
     def user_data(self, access_token, *args, **kwargs):
