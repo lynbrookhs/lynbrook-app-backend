@@ -74,7 +74,7 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["grad_year"]
+    REQUIRED_FIELDS = []
     objects = UserManager()
 
     username = None
