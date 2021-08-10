@@ -148,7 +148,7 @@ SOCIAL_AUTH_USER_MODEL = AUTH_USER_MODEL
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "core.schoology.SchoologyOAuth",
-    # "allauth.account.auth_backends.AuthenticationBackend",
+    "social_core.backends.google.GoogleOAuth2",
 ]
 
 REST_FRAMEWORK = {

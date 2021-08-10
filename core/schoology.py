@@ -31,7 +31,7 @@ class SchoologyOAuth(BaseOAuth1):
             "email": data["primary_email"],
             "first_name": data["name_first_preferred"] or data["name_first"],
             "last_name": data["name_last"],
-            "grad_year": int(data["grad_year"]),
+            "grad_year": int(data.get("grad_year", 0)),
             "picture_url": data["picture_url"],
         }
 
