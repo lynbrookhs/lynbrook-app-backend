@@ -129,7 +129,18 @@ class CreateMembershipSerializer(serializers.ModelSerializer):
         model = models.Membership
         fields = ("organization", "points")
 
+    class AlreadyClaimed(Exception):
+        pass
+
     points = serializers.IntegerField(read_only=True)
+
+    @transaction.atomic
+    def create(self, validated_data):
+        obj, created = self.Meta.model.objects.get_or_create(**validated_data)
+        if not created:
+            obj.active = True
+            obj.save()
+        return obj
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -164,6 +175,7 @@ class ClaimEventSerializer(serializers.ModelSerializer):
         event = self.Meta.model.objects.get(code=code)
         membership, _ = models.Membership.objects.get_or_create(user=user, organization=event.organization)
         membership.points += event.points
+        membership.active = True
         membership.save()
         event.users.add(user)
         return event

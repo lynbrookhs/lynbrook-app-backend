@@ -14,7 +14,7 @@ admin.site.site_header = "Lynbrook ASB"
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
-    class MembershipAdmin(admin.StackedInline, DynamicArrayMixin):
+    class MembershipAdmin(admin.TabularInline, DynamicArrayMixin):
         model = Membership
         extra = 0
 

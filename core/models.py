@@ -154,7 +154,7 @@ class Membership(Model):
 
     user = ForeignKey(User, on_delete=CASCADE, related_name="memberships")
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="memberships")
-
+    active = BooleanField(default=True)
     points = PositiveIntegerField(default=0)
 
 
