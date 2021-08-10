@@ -142,7 +142,15 @@ class EventSerializer(serializers.ModelSerializer):
 class ClaimEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Event
-        fields = ("code",)
+        fields = ("code", "points")
+
+    points = serializers.IntegerField(read_only=True)
+
+    def create(self, validated_data):
+        code = validated_data["code"]
+        event = self.Meta.model.objects.get(code=code)
+        event.users.add(validated_data["user"])
+        return event
 
 
 class PrizeSerializer(serializers.ModelSerializer):

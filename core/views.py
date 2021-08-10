@@ -95,9 +95,7 @@ class UserEventViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mi
         return serializers.EventSerializer
 
     def perform_create(self, serializer):
-        code = serializer.validated_data["code"]
-        event = viewsets.ReadOnlyModelViewSet.get_queryset(self).get(code=code)
-        event.users.add(self.get_user())
+        serializer.save(user=self.get_user())
 
     def handle_exception(self, exc):
         if isinstance(exc, models.Event.DoesNotExist):
