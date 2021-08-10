@@ -144,6 +144,8 @@ class ClaimEventSerializer(serializers.ModelSerializer):
         model = models.Event
         fields = ("id", "url", "organization", "name", "description", "start", "end", "code", "points")
 
+    organization = NestedOrganizationSerializer(read_only=True)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields:
