@@ -47,6 +47,14 @@ class PollType(IntegerChoices):
     SHORT_ANSWER = 2
 
 
+class LowercaseEmailField(EmailField):
+    def to_python(self, value):
+        value = super().to_python(value)
+        if isinstance(value, str):
+            return value.lower()
+        return value
+
+
 class UserManager(BaseUserManager):
     def _create_user(self, email, password, **extra_fields):
         email = self.normalize_email(email)
@@ -78,7 +86,7 @@ class User(AbstractUser):
     objects = UserManager()
 
     username = None
-    email = EmailField(_("email address"), unique=True)
+    email = LowercaseEmailField(_("email address"), unique=True)
     grad_year = IntegerField(null=True, blank=True)
     organizations = ManyToManyField("Organization", through="Membership", related_name="users")
     picture_url = URLField(
