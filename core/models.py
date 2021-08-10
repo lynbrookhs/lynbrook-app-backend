@@ -168,7 +168,7 @@ class Event(Model):
 
     points = PositiveIntegerField()
     code = PositiveIntegerField(default=random_code)
-    users = ManyToManyField(USER_MODEL, blank=True, related_name="events", editable=False)
+    users = ManyToManyField(USER_MODEL, blank=True, related_name="events")
 
     def __str__(self):
         return self.name

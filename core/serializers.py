@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import serializers
 
 from . import models
@@ -144,6 +145,9 @@ class ClaimEventSerializer(serializers.ModelSerializer):
         model = models.Event
         fields = ("id", "url", "organization", "name", "description", "start", "end", "code", "points")
 
+    class AlreadyClaimed(Exception):
+        pass
+
     organization = NestedOrganizationSerializer(read_only=True)
 
     def __init__(self, *args, **kwargs):
@@ -152,10 +156,16 @@ class ClaimEventSerializer(serializers.ModelSerializer):
             if field != "code":
                 self.fields[field].read_only = True
 
+    @transaction.atomic
     def create(self, validated_data):
-        code = validated_data["code"]
+        code, user = validated_data["code"], validated_data["user"]
+        if self.Meta.model.objects.filter(code=code, users=user).exists():
+            raise self.AlreadyClaimed
         event = self.Meta.model.objects.get(code=code)
-        event.users.add(validated_data["user"])
+        membership, _ = models.Membership.objects.get_or_create(user=user, organization=event.organization)
+        membership.points += event.points
+        membership.save()
+        event.users.add(user)
         return event
 
 

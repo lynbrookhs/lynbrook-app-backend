@@ -100,6 +100,8 @@ class UserEventViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mi
     def handle_exception(self, exc):
         if isinstance(exc, models.Event.DoesNotExist):
             return Response(status=status.HTTP_404_NOT_FOUND)
+        if isinstance(exc, serializers.ClaimEventSerializer.AlreadyClaimed):
+            return Response(status=status.HTTP_409_CONFLICT)
         return super().handle_exception(exc)
 
 

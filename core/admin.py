@@ -40,6 +40,7 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_filter = ("organization",)
     search_fields = ("name",)
     readonly_fields = ("code", "qr_code")
+    autocomplete_fields = ("users",)
 
     def user_count(self, obj):
         return obj.users.count()
