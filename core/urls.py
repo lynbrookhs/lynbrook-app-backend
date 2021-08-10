@@ -8,6 +8,7 @@ router = ExtendedDefaultRouter()
 
 users = router.register("users", views.UserViewSet, basename="core-user")
 users.register("orgs", views.MembershipViewSet, basename="user-organization", parents_query_lookups=["user"])
+users.register("events", views.UserEventViewSet, basename="user-event", parents_query_lookups=["users"])
 
 router.register("orgs", views.OrganizationViewSet, basename="organization")
 router.register("posts", views.PostViewSet, basename="post")

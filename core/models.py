@@ -85,6 +85,9 @@ class User(AbstractUser):
         default="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"
     )
 
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}, {self.grad_year} ({self.email})"
+
 
 class Organization(Model):
     class Meta:
@@ -164,7 +167,7 @@ class Event(Model):
     end = DateTimeField()
 
     points = PositiveIntegerField()
-    code = PositiveIntegerField(default=random_code, editable=False)
+    code = PositiveIntegerField(default=random_code)
     users = ManyToManyField(USER_MODEL, blank=True, related_name="events", editable=False)
 
     def __str__(self):

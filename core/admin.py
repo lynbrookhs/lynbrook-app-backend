@@ -35,6 +35,7 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("name", "organization", "start", "end", "points", "user_count")
     list_filter = ("organization",)
     search_fields = ("name",)
+    readonly_fields = ("code",)
 
     def user_count(self, obj):
         return obj.users.count()

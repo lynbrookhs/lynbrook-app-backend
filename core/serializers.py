@@ -139,6 +139,12 @@ class EventSerializer(serializers.ModelSerializer):
     organization = NestedOrganizationSerializer(read_only=True)
 
 
+class ClaimEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Event
+        fields = ("code",)
+
+
 class PrizeSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Prize

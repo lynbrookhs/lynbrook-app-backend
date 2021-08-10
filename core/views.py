@@ -2,12 +2,12 @@ from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from django.http import request
 from django.views.generic.base import TemplateView
-from rest_access_policy import AccessPolicy
 from rest_framework import filters, mixins, pagination, status, views, viewsets
 from rest_framework.response import Response
 from rest_framework_extensions.mixins import NestedViewSetMixin
+
+from core.permissions import NestedUserAccessPolicy, UserAccessPolicy
 
 from . import models, serializers
 
@@ -20,20 +20,28 @@ class SmallPages(pagination.PageNumberPagination):
     page_size = 20
 
 
+class NestedUserViewSetMixin(NestedViewSetMixin):
+    def get_parents_query_dict(self):
+        kw = super().get_parents_query_dict()
+        for key in ("user", "users"):
+            if kw.get(key) == "me":
+                kw[key] = self.request.user.id
+        return kw
+
+    def get_user(self):
+        qdict = self.get_parents_query_dict()
+        for key in ("user", "users"):
+            try:
+                user_id = qdict[key]
+                break
+            except KeyError:
+                pass
+        else:
+            return None
+        return get_user_model().objects.get(pk=user_id)
+
+
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
-    class UserAccessPolicy(AccessPolicy):
-        statements = [
-            dict(action=["list"], principal="*", effect="allow"),
-            dict(action=["retrieve"], principal="*", effect="allow", condition=["is_user"]),
-        ]
-
-        def is_user(self, request, view, *args, **kwargs):
-            return view.get_object() == request.user
-
-        @classmethod
-        def scope_queryset(cls, request, qs):
-            return qs.filter(id=request.user.id)
-
     permission_classes = (UserAccessPolicy,)
     serializer_class = serializers.UserSerializer
 
@@ -55,47 +63,46 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class MembershipViewSet(
-    NestedViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin
+    NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin
 ):
-    class MembersAccessPolicy(AccessPolicy):
-        statements = [
-            dict(action=["*"], principal="*", effect="allow", condition=["is_user"]),
-        ]
-
-        def is_user(self, request, view, *args, **kwargs):
-            qdict = view.get_parents_query_dict()
-            user = get_user_model().objects.get(pk=qdict["user"])
-            return user == request.user
-
-    permission_classes = (MembersAccessPolicy,)
+    permission_classes = (NestedUserAccessPolicy,)
     queryset = models.Membership.objects.all()
     lookup_field = "organization"
     filter_backends = (filters.OrderingFilter,)
     ordering = ("organization__type", "organization__name")
-
-    def get_parents_query_dict(self):
-        kw = super().get_parents_query_dict()
-        if kw["user"] == "me":
-            kw["user"] = self.request.user.id
-        return kw
 
     def get_serializer_class(self):
         if self.action == "create":
             return serializers.CreateMembershipSerializer
         return serializers.MembershipSerializer
 
-    def create(self, request, *args, **kwargs):
-        qdict = self.get_parents_query_dict()
-        user = get_user_model().objects.get(pk=qdict["user"])
+    def perform_create(self, serializer):
+        serializer.save(user=self.get_user())
 
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        try:
-            serializer.save(user=user)
-        except IntegrityError:
+    def handle_exception(self, exc):
+        if isinstance(exc, IntegrityError):
             return Response(status=status.HTTP_409_CONFLICT)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return super().handle_exception(exc)
+
+
+class UserEventViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin):
+    permission_classes = (NestedUserAccessPolicy,)
+    queryset = models.Event.objects.all()
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return serializers.ClaimEventSerializer
+        return serializers.EventSerializer
+
+    def perform_create(self, serializer):
+        code = serializer.validated_data["code"]
+        event = viewsets.ReadOnlyModelViewSet.get_queryset(self).get(code=code)
+        event.users.add(self.get_user())
+
+    def handle_exception(self, exc):
+        if isinstance(exc, models.Event.DoesNotExist):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return super().handle_exception(exc)
 
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
