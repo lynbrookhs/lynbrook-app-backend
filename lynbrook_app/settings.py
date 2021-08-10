@@ -30,7 +30,7 @@ DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "t", "1")
 ALLOWED_HOSTS = ["lynbrookasb.org", "www.lynbrookasb.org"]
 
 if DEBUG:
-    ALLOWED_HOSTS += [".localhost", "127.0.0.1", "[::1]"]
+    ALLOWED_HOSTS += [".localhost", "127.0.0.1", "[::1]", "192.168.1.21"]
 
 
 # Application definition
@@ -168,6 +168,7 @@ class AllList(list):
 
 
 DJOSER = {
+    "USER_CREATE_PASSWORD_RETYPE": True,
     "SOCIAL_AUTH_ALLOWED_REDIRECT_URIS": AllList(),
     "SERIALIZERS": {
         "user": "core.serializers.UserSerializer",
