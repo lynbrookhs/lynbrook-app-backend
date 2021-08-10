@@ -27,12 +27,13 @@ class SchoologyOAuth(BaseOAuth1):
     COURSE_DATA_URL = f"{API_BASE_URL}/users/{{id}}/sections"
 
     def get_user_details(self, data):
+        print(data)
         return {
             "email": data["primary_email"],
-            "first_name": data["name_first_preferred"] or data["name_first"],
-            "last_name": data["name_last"],
+            "first_name": data.get("name_first_preferred") or data.get("name_first"),
+            "last_name": data.get("name_last"),
             "grad_year": int(data.get("grad_year", 0)),
-            "picture_url": data["picture_url"],
+            "picture_url": data.get("picture_url"),
         }
 
     def user_data(self, access_token, *args, **kwargs):

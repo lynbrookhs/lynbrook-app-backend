@@ -247,7 +247,6 @@ class Schedule(Model):
 
     @classmethod
     def get_for_day(cls, day: date):
-        print(day)
         qs = cls.objects.filter(start__lte=day, end__gte=day, weekday__contains=[day.weekday()])
         try:
             return qs.order_by("-priority")[0]
