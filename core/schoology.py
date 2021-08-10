@@ -16,13 +16,15 @@ class SchoologyOAuth(BaseOAuth1):
     REQUEST_TOKEN_URL = f"{API_BASE_URL}/oauth/request_token"
     ACCESS_TOKEN_URL = f"{API_BASE_URL}/oauth/access_token"
     REDIRECT_URI_PARAMETER_NAME = "oauth_callback"
-    USER_DATA_URL = f"{API_BASE_URL}/users/me"
     EXTRA_DATA = [
         ("id", "id"),
         ("school_id", "school_id"),
         ("building_id", "building_id"),
         ("username", "username"),
     ]
+
+    USER_DATA_URL = f"{API_BASE_URL}/users/me"
+    COURSE_DATA_URL = f"{API_BASE_URL}/users/{{id}}/sections"
 
     def get_user_details(self, data):
         return {
@@ -34,9 +36,9 @@ class SchoologyOAuth(BaseOAuth1):
         }
 
     def user_data(self, access_token, *args, **kwargs):
-        r = self.oauth_request(access_token, self.USER_DATA_URL)
-        ret = r.json()
-        return ret
+        user = self.oauth_request(access_token, self.USER_DATA_URL).json()
+        # courses = self.oauth_request(access_token, self.COURSE_DATA_URL.format_map(user)).json()
+        return user
 
     def request(self, url, method="GET", *args, **kwargs):
         kwargs.setdefault("headers", {})
