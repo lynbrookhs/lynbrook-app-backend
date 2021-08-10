@@ -8,7 +8,7 @@ SCHOOLOGY_URL = "https://fuhsd.schoology.com"
 
 
 class SchoologyOAuth(BaseOAuth1):
-    """TripIt OAuth authentication backend"""
+    """Schoology OAuth authentication backend"""
 
     name = "schoology"
     ID_KEY = "uid"
