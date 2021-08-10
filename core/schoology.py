@@ -27,17 +27,13 @@ class SchoologyOAuth(BaseOAuth1):
     COURSE_DATA_URL = f"{API_BASE_URL}/users/{{id}}/sections"
 
     def get_user_details(self, data):
-        try:
-            return {
-                "email": data["primary_email"],
-                "first_name": data["name_first_preferred"] or data["name_first"],
-                "last_name": data.get["name_last"],
-                "grad_year": int(data["grad_year"] or 0),
-                "picture_url": data["picture_url"],
-            }
-        except Exception as e:
-            print(e)
-            raise e
+        return {
+            "email": data["primary_email"],
+            "first_name": data["name_first_preferred"] or data["name_first"],
+            "last_name": data["name_last"],
+            "grad_year": int(data["grad_year"] or 0),
+            "picture_url": data["picture_url"],
+        }
 
     def user_data(self, access_token, *args, **kwargs):
         user = self.oauth_request(access_token, self.USER_DATA_URL).json()
