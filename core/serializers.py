@@ -142,9 +142,13 @@ class EventSerializer(serializers.ModelSerializer):
 class ClaimEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Event
-        fields = ("code", "points")
+        fields = ("id", "url", "organization", "name", "description", "start", "end", "code", "points")
 
-    points = serializers.IntegerField(read_only=True)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields:
+            if field != "code":
+                self.fields[field].read_only = True
 
     def create(self, validated_data):
         code = validated_data["code"]
