@@ -147,8 +147,8 @@ SOCIAL_AUTH_USER_MODEL = AUTH_USER_MODEL
 
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
-    "core.schoology.SchoologyOAuth",
-    "social_core.backends.google.GoogleOAuth2",
+    "core.auth.SchoologyOAuth",
+    "core.auth.GoogleOAuth",
 ]
 
 REST_FRAMEWORK = {
@@ -176,9 +176,8 @@ DJOSER = {
     },
 }
 
-SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.environ["GOOGLE_API_KEY"]
-SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.environ["GOOGLE_API_SECRET"]
-
+SOCIAL_AUTH_GOOGLE_KEY = os.environ["GOOGLE_API_KEY"]
+SOCIAL_AUTH_GOOGLE_SECRET = os.environ["GOOGLE_API_SECRET"]
 SOCIAL_AUTH_SCHOOLOGY_KEY = os.environ["SCHOOLOGY_API_KEY"]
 SOCIAL_AUTH_SCHOOLOGY_SECRET = os.environ["SCHOOLOGY_API_SECRET"]
 SOCIAL_AUTH_USER_FIELDS = ["email"]

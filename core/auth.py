@@ -1,10 +1,21 @@
 from requests import ConnectionError, request
+from social_core.backends.google import GoogleOAuth2
 from social_core.backends.oauth import BaseOAuth1
 from social_core.exceptions import AuthFailed
 from social_core.utils import SSLHttpAdapter, user_agent
 
 API_BASE_URL = "https://api.schoology.com/v1"
 SCHOOLOGY_URL = "https://fuhsd.schoology.com"
+
+
+class GoogleOAuth(GoogleOAuth2):
+    name = "google"
+
+    def get_user_details(self, data):
+        return {
+            **super().get_user_details(data),
+            "picture_url": data["picture"],
+        }
 
 
 class SchoologyOAuth(BaseOAuth1):
