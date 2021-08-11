@@ -17,6 +17,9 @@ class GoogleOAuth(GoogleOAuth2):
             "picture_url": data["picture"],
         }
 
+    def auth_url(self):
+        return super().auth_url() + "&hd=fuhsd.org"
+
 
 class SchoologyOAuth(BaseOAuth1):
     """Schoology OAuth authentication backend"""
