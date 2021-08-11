@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
@@ -157,16 +158,25 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.ScheduleSerializer
 
 
-class CurrentScheduleView(views.APIView):
+class WeekScheduleView(ABC, views.APIView):
+    @abstractmethod
+    def start(self, request):
+        pass
+
     def get(self, request):
-        start = date.today() + timedelta(days=2)
-        start = start - timedelta(days=start.weekday())
+        start = self.start(request)
         objects = [models.Schedule.get_for_day(start + timedelta(days=x)) for x in models.DayOfWeek]
         serializer = serializers.NestedScheduleSerializer(objects, context={"request": request}, many=True)
-        return Response(
-            {
-                "start": start,
-                "end": start + timedelta(days=6),
-                "weekdays": serializer.data,
-            }
-        )
+        return Response({"start": start, "end": start + timedelta(days=6), "weekdays": serializer.data})
+
+
+class CurrentScheduleView(WeekScheduleView):
+    def start(self, request):
+        start = date.today() + timedelta(days=2)
+        return start - timedelta(days=start.weekday())
+
+
+class NextScheduleView(WeekScheduleView):
+    def start(self, request):
+        start = date.today() + timedelta(days=9)
+        return start - timedelta(days=start.weekday())

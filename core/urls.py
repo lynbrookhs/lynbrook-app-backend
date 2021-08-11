@@ -18,6 +18,7 @@ router.register("schedules", views.ScheduleViewSet, basename="schedule")
 
 urlpatterns = [
     path("api/schedules/current/", views.CurrentScheduleView.as_view()),
+    path("api/schedules/next/", views.NextScheduleView.as_view()),
     path("api/", include(router.urls)),
     path("", views.IndexView.as_view()),
 ]
