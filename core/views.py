@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
@@ -135,7 +135,10 @@ class EventViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.EventSerializer
 
     def get_queryset(self):
-        return models.Event.objects.filter(organization__users=self.request.user)
+        now = datetime.now()
+        return models.Event.objects.filter(
+            start__lte=now, end__gte=now, organization__users=self.request.user
+        )
 
 
 class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
