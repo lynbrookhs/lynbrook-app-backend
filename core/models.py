@@ -47,6 +47,11 @@ class PollType(IntegerChoices):
     SHORT_ANSWER = 2
 
 
+class EventSubmissionType(IntegerChoices):
+    CODE = 1
+    FILE = 2
+
+
 class LowercaseEmailField(EmailField):
     def to_python(self, value):
         value = super().to_python(value)
@@ -178,6 +183,7 @@ class Event(Model):
 
     points = PositiveIntegerField()
     code = PositiveIntegerField(default=random_code)
+    submission_type = IntegerField(choices=EventSubmissionType.choices)
     users = ManyToManyField(USER_MODEL, blank=True, related_name="events")
 
     def __str__(self):

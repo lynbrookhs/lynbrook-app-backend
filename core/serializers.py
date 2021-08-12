@@ -146,7 +146,7 @@ class CreateMembershipSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Event
-        fields = ("id", "url", "organization", "name", "description", "start", "end", "points")
+        fields = ("id", "url", "organization", "name", "description", "start", "end", "points", "submission_type")
 
     organization = NestedOrganizationSerializer(read_only=True)
 
