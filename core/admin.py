@@ -38,7 +38,11 @@ def with_organization_permissions(cls):
 
         def get_queryset(self, request):
             qs = super().get_queryset(request)
-            return qs.filter(Q(organization__admins=request.user) | Q(organization__advisors=request.user))
+            if request.user.is_superuser:
+                return qs
+            return qs.filter(
+                Q(organization__admins=request.user) | Q(organization__advisors=request.user)
+            ).distinct()
 
         def get_form(self, request, obj=None, change=False, **kwargs):
             if not request.user.is_superuser:
@@ -46,7 +50,11 @@ def with_organization_permissions(cls):
 
                 class UserForm(form_class):
                     def __init__(self, *args, **kwargs):
-                        super().__init__(user=request.user, *args, **kwargs)
+                        super().__init__(*args, **kwargs)
+                        q = Q(admins=request.user) | Q(advisors=request.user)
+                        self.fields["organization"].queryset = (
+                            self.fields["organization"].queryset.filter(q).distinct()
+                        )
 
                 kwargs["form"] = UserForm
 
@@ -61,12 +69,13 @@ class AdminAdvisorListFilter(admin.SimpleListFilter):
     parameter_name = "organization"
 
     def lookups(self, request, model_admin):
-        orgs = Organization.objects.filter(Q(admins=request.user) | Q(advisors=request.user))
+        if request.user.is_superuser:
+            orgs = Organization.objects.all()
+        else:
+            orgs = Organization.objects.filter(Q(admins=request.user) | Q(advisors=request.user)).distinct()
         return [(org.id, org.name) for org in orgs]
 
     def queryset(self, request, queryset):
-        if not self.value() or request.user.is_superuser:
-            return queryset
         return queryset.filter(organization=self.value())
 
 
@@ -154,7 +163,9 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        return qs.filter(Q(admins=request.user) | Q(advisors=request.user))
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(Q(admins=request.user) | Q(advisors=request.user)).distinct()
 
     def get_form(self, request, obj=None, **kwargs):
         if not request.user.is_superuser:
@@ -168,11 +179,6 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     class AdminAdvisorForm(forms.ModelForm):
         class Meta:
             fields = ("organization", "name", "description", "start", "end", "points", "submission_type")
-
-        def __init__(self, user, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            q = Q(admins=user) | Q(advisors=user)
-            self.fields["organization"].queryset = self.fields["organization"].queryset.filter(q)
 
     date_hierarchy = "start"
     list_display = ("name", "organization", "start", "end", "points", "user_count")
@@ -201,11 +207,6 @@ class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
         class Meta:
             fields = ("organization", "title", "content", "published")
 
-        def __init__(self, user, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            q = Q(admins=user) | Q(advisors=user)
-            self.fields["organization"].queryset = self.fields["organization"].queryset.filter(q)
-
     date_hierarchy = "date"
     list_display = ("title", "date", "organization", "published")
     list_filter = ("organization", "published")
@@ -219,11 +220,6 @@ class PrizeAdmin(admin.ModelAdmin, DynamicArrayMixin):
     class AdminAdvisorForm(forms.ModelForm):
         class Meta:
             fields = ("organization", "name", "description", "points")
-
-        def __init__(self, user, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            q = Q(admins=user) | Q(advisors=user)
-            self.fields["organization"].queryset = self.fields["organization"].queryset.filter(q)
 
     list_display = ("name", "description", "organization", "points")
     list_filter = ("organization",)
