@@ -190,12 +190,6 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
         return mark_safe(f'<img src="{uri_svg}" alt="lhs://{obj.code}">')
 
 
-@admin.register(Period)
-class PeriodAdmin(admin.ModelAdmin, DynamicArrayMixin):
-    list_display = ("id", "name", "customizable")
-    list_editable = ("customizable",)
-
-
 @admin.register(Post)
 @with_organization_permissions
 class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
@@ -220,9 +214,25 @@ class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 
 @admin.register(Prize)
+@with_organization_permissions
 class PrizeAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    class AdminAdvisorForm(forms.ModelForm):
+        class Meta:
+            fields = ("organization", "name", "description", "points")
+
+        def __init__(self, user, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            q = Q(admins=user) | Q(advisors=user)
+            self.fields["organization"].queryset = self.fields["organization"].queryset.filter(q)
+
     list_display = ("name", "description", "organization", "points")
     list_filter = ("organization",)
+
+
+@admin.register(Period)
+class PeriodAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    list_display = ("id", "name", "customizable")
+    list_editable = ("customizable",)
 
 
 @admin.register(Schedule)
