@@ -156,9 +156,16 @@ class EventSerializer(serializers.ModelSerializer):
             "end",
             "points",
             "submission_type",
+            "claimed",
         )
 
     organization = NestedOrganizationSerializer(read_only=True)
+    claimed = serializers.SerializerMethodField()
+
+    def get_claimed(self, event):
+        request = self.context.get("request")
+        if request:
+            return event.users.filter(id=request.user.id).exists()
 
 
 class ClaimEventSerializer(serializers.ModelSerializer):
