@@ -99,6 +99,8 @@ class User(AbstractUser):
     )
 
     def __str__(self):
+        if self.grad_year is None:
+            return f"{self.first_name} {self.last_name} ({self.email})"
         return f"{self.first_name} {self.last_name}, {self.grad_year} ({self.email})"
 
 
@@ -147,6 +149,12 @@ class Organization(Model):
     link = URLField(null=True, blank=True)
 
     ical_links = ArrayField(URLField(), blank=True, default=list)
+
+    def is_admin(self, user):
+        return self.admins.filter(id=user.id).exists()
+
+    def is_advisor(self, user):
+        return self.advisors.filter(id=user.id).exists()
 
     def __str__(self):
         return self.name
