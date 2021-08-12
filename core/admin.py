@@ -14,6 +14,18 @@ admin.site.site_header = "Lynbrook ASB"
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
+    class AdvisorOrganizationAdmin(admin.TabularInline, DynamicArrayMixin):
+        model = Organization.advisors.through
+        verbose_name = "Organization"
+        verbose_name_plural = "Advisor For"
+        extra = 0
+
+    class AdminOrganizationAdmin(admin.TabularInline, DynamicArrayMixin):
+        model = Organization.admins.through
+        verbose_name = "Organization"
+        verbose_name_plural = "Admin For"
+        extra = 0
+
     class MembershipAdmin(admin.TabularInline, DynamicArrayMixin):
         model = Membership
         extra = 0
@@ -30,6 +42,8 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
     list_filter = ("is_staff", "is_superuser", "grad_year")
     search_fields = ("email", "first_name", "last_name")
     ordering = None
+    inlines = (AdvisorOrganizationAdmin, AdminOrganizationAdmin)
+
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
