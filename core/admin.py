@@ -1,5 +1,8 @@
+import functools
+
 import qrcode
 from datauri import DataURI
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.safestring import mark_safe
@@ -10,6 +13,61 @@ from qrcode.image.svg import SvgPathFillImage
 from .models import *
 
 admin.site.site_header = "Lynbrook ASB"
+
+
+def with_organization_permissions(cls):
+    class Admin(cls):
+        list_filter = (AdminAdvisorListFilter,)
+
+        def has_module_permission(self, request):
+            return True
+
+        def has_add_permission(self, request):
+            return True
+
+        def has_view_permission(self, request, obj=None):
+            if obj is None:
+                return True
+            return obj.organization.is_admin(request.user) or obj.organization.is_advisor(request.user)
+
+        def has_change_permission(self, request, obj=None):
+            return self.has_view_permission(request, obj)
+
+        def has_delete_permission(self, request, obj=None):
+            return self.has_change_permission(request, obj)
+
+        def get_queryset(self, request):
+            qs = super().get_queryset(request)
+            return qs.filter(Q(organization__admins=request.user) | Q(organization__advisors=request.user))
+
+        def get_form(self, request, obj=None, change=False, **kwargs):
+            if not request.user.is_superuser:
+                form_class = cls.AdminAdvisorForm
+
+                class UserForm(form_class):
+                    def __init__(self, *args, **kwargs):
+                        super().__init__(user=request.user, *args, **kwargs)
+
+                kwargs["form"] = UserForm
+
+            return super().get_form(request, obj=obj, **kwargs)
+
+    return Admin
+
+
+class AdminAdvisorListFilter(admin.SimpleListFilter):
+    title = _("organization")
+
+    parameter_name = "organization"
+
+    def lookups(self, request, model_admin):
+        orgs = Organization.objects.filter(Q(admins=request.user) | Q(advisors=request.user))
+        return [(org.id, org.name) for org in orgs]
+
+    def queryset(self, request, queryset):
+        if not self.value() or request.user.is_superuser:
+            return queryset
+        return queryset.filter(organization=self.value())
 
 
 @admin.register(User)
@@ -105,10 +163,19 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 
 @admin.register(Event)
+@with_organization_permissions
 class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    class AdminAdvisorForm(forms.ModelForm):
+        class Meta:
+            fields = ("organization", "name", "description", "start", "end", "points", "submission_type")
+
+        def __init__(self, user, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            q = Q(admins=user) | Q(advisors=user)
+            self.fields["organization"].queryset = self.fields["organization"].queryset.filter(q)
+
     date_hierarchy = "start"
     list_display = ("name", "organization", "start", "end", "points", "user_count")
-    list_filter = ("organization",)
     search_fields = ("name",)
     readonly_fields = ("code", "qr_code")
     autocomplete_fields = ("users",)
@@ -130,10 +197,20 @@ class PeriodAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 
 @admin.register(Post)
+@with_organization_permissions
 class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
     class InlinePollAdmin(admin.StackedInline, DynamicArrayMixin):
         model = Poll
         extra = 0
+
+    class AdminAdvisorForm(forms.ModelForm):
+        class Meta:
+            fields = ("organization", "title", "content", "published")
+
+        def __init__(self, user, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            q = Q(admins=user) | Q(advisors=user)
+            self.fields["organization"].queryset = self.fields["organization"].queryset.filter(q)
 
     date_hierarchy = "date"
     list_display = ("title", "date", "organization", "published")
