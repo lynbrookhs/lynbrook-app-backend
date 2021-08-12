@@ -76,6 +76,8 @@ class AdminAdvisorListFilter(admin.SimpleListFilter):
         return [(org.id, org.name) for org in orgs]
 
     def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
         return queryset.filter(organization=self.value())
 
 
