@@ -166,6 +166,9 @@ class ClaimEventSerializer(serializers.ModelSerializer):
         model = models.Event
         fields = ("id", "url", "organization", "name", "description", "start", "end", "code", "points")
 
+    class CodeRequired(Exception):
+        pass
+
     class AlreadyClaimed(Exception):
         pass
 
@@ -173,21 +176,26 @@ class ClaimEventSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        for field in self.fields:
-            if field != "code":
-                self.fields[field].read_only = True
+        for name, field in self.fields.items():
+            field.read_only = name not in ("code", "id")
 
     @transaction.atomic
     def create(self, validated_data):
-        code, user = validated_data["code"], validated_data["user"]
-        if self.Meta.model.objects.filter(code=code, users=user).exists():
+        user = validated_data.pop("user")
+        event = self.Meta.model.objects.get(**validated_data)
+
+        if event.submission_type == models.EventSubmissionType.CODE and "code" not in validated_data:
+            raise self.CodeRequired
+
+        if event.users.filter(id=user.id).exists():
             raise self.AlreadyClaimed
-        event = self.Meta.model.objects.get(code=code)
+
         membership, _ = models.Membership.objects.get_or_create(user=user, organization=event.organization)
         membership.points += event.points
         membership.active = True
         membership.save()
         event.users.add(user)
+
         return event
 
 
