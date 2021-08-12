@@ -185,7 +185,7 @@ class Event(Model):
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="events")
 
     name = CharField(max_length=200)
-    description = TextField()
+    description = TextField(null=True, blank=True)
     start = DateTimeField()
     end = DateTimeField()
 
