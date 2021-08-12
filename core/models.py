@@ -99,6 +99,7 @@ class User(AbstractUser):
 
 class Organization(Model):
     class Meta:
+        ordering = ("type", "name")
         constraints = [
             CheckConstraint(
                 name="%(app_label)s_%(class)s_type",
@@ -154,6 +155,7 @@ class OrganizationLink(Model):
 
 class Membership(Model):
     class Meta:
+        ordering = ("organization__type", "organization__name")
         constraints = [
             UniqueConstraint(
                 name="%(app_label)s_%(class)s_user_organization", fields=("user", "organization")
@@ -183,6 +185,9 @@ class Event(Model):
 
 
 class Post(Model):
+    class Meta:
+        ordering = ("-date",)
+
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="posts")
     title = CharField(max_length=200)
     date = DateTimeField(auto_now=True)
@@ -228,6 +233,9 @@ class Poll(Model):
 
 
 class Prize(Model):
+    class Meta:
+        ordering = ("points",)
+
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="prizes")
 
     name = CharField(max_length=200)
@@ -239,6 +247,9 @@ class Prize(Model):
 
 
 class Schedule(Model):
+    class Meta:
+        ordering = ("-priority",)
+
     name = CharField(max_length=200)
     start = DateField()
     end = DateField()
@@ -249,7 +260,7 @@ class Schedule(Model):
     def get_for_day(cls, day: date):
         qs = cls.objects.filter(start__lte=day, end__gte=day, weekday__contains=[day.weekday()])
         try:
-            return qs.order_by("-priority")[0]
+            return qs[0]
         except IndexError:
             return cls(name="No Schedule")
 

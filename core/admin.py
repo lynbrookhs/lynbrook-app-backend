@@ -85,7 +85,6 @@ class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("title", "date", "organization", "published")
     list_filter = ("organization", "published")
     list_editable = ("published",)
-    ordering = ("-date",)
     inlines = (InlinePollAdmin,)
 
 
@@ -103,5 +102,4 @@ class ScheduleAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     list_display = ("name", "start", "end", "weekday", "priority")
     inlines = (InlinePeriodAdmin,)
-    ordering = ("-priority",)
     save_as = True
