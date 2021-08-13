@@ -14,7 +14,7 @@ from . import models, serializers
 
 
 class IndexView(TemplateView):
-    template_name = "index.html"
+    template_name = "core/index.html"
 
 
 class SmallPages(pagination.PageNumberPagination):

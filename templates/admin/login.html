@@ -1,0 +1,24 @@
+{% extends "admin/login.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    #content-main {
+        padding-bottom: 20px;
+    }
+    #content-extra {
+        padding-top: 20px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+<hr>
+<div id="content-extra">
+    <p>Or, sign in using:</p>
+    <p><a href="{% url 'social:begin' 'google' %}">Google</a></p>
+    <a href="{% url 'social:begin' 'schoology' %}">Schoology</a>
+</div>
+{% endblock %}

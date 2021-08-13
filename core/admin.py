@@ -1,5 +1,3 @@
-import functools
-
 import qrcode
 from datauri import DataURI
 from django import forms

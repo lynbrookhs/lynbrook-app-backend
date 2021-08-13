@@ -66,7 +66,7 @@ ROOT_URLCONF = "lynbrook_app.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -194,3 +194,5 @@ CSRF_COOKIE_SECURE = not DEBUG
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 STATIC_ROOT = os.path.join(BASE_DIR, "static/")
+
+LOGIN_REDIRECT_URL = "/admin/"
