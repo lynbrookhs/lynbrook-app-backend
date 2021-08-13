@@ -129,9 +129,6 @@ class CreateMembershipSerializer(serializers.ModelSerializer):
         model = models.Membership
         fields = ("organization", "points")
 
-    class AlreadyClaimed(Exception):
-        pass
-
     points = serializers.IntegerField(read_only=True)
 
     @transaction.atomic
@@ -140,6 +137,17 @@ class CreateMembershipSerializer(serializers.ModelSerializer):
         if not created:
             obj.active = True
             obj.save()
+        return obj
+
+
+class ExpoPushTokenSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.ExpoPushToken
+        fields = ("token",)
+
+    @transaction.atomic
+    def create(self, validated_data):
+        obj, _ = self.Meta.model.objects.get_or_create(**validated_data)
         return obj
 
 

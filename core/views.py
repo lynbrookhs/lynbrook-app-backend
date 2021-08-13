@@ -63,6 +63,17 @@ class UserViewSet(viewsets.ReadOnlyModelViewSet):
             return qs
 
 
+class ExpoPushTokenViewSet(
+    NestedUserViewSetMixin, viewsets.GenericViewSet, mixins.ListModelMixin, mixins.CreateModelMixin
+):
+    permission_classes = (NestedUserAccessPolicy,)
+    queryset = models.ExpoPushToken.objects.all()
+    serializer_class = serializers.ExpoPushTokenSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.get_user())
+
+
 class MembershipViewSet(
     NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin
 ):
