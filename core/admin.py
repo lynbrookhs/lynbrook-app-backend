@@ -97,6 +97,10 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
         model = Membership
         extra = 0
 
+    class ExpoPushTokenAdmin(admin.TabularInline, DynamicArrayMixin):
+        model = ExpoPushToken
+        extra = 0
+
     fieldsets = (
         (None, {"fields": ("email", "password")}),
         (_("Personal info"), {"fields": ("first_name", "last_name", "grad_year")}),
@@ -109,7 +113,7 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
     list_filter = ("is_staff", "is_superuser", "grad_year")
     search_fields = ("email", "first_name", "last_name")
     ordering = None
-    inlines = (AdvisorOrganizationAdmin, AdminOrganizationAdmin)
+    inlines = (AdvisorOrganizationAdmin, AdminOrganizationAdmin, ExpoPushTokenAdmin)
 
 
 @admin.register(Organization)

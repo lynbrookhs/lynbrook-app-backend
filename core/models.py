@@ -104,6 +104,11 @@ class User(AbstractUser):
         return f"{self.first_name} {self.last_name}, {self.grad_year} ({self.email})"
 
 
+class ExpoPushToken(Model):
+    user = ForeignKey(User, on_delete=CASCADE, related_name="expo_push_tokens")
+    token = CharField(max_length=200, unique=True)
+
+
 class Organization(Model):
     class Meta:
         ordering = ("type", "name")
