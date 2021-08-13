@@ -24,7 +24,7 @@ def with_organization_permissions(cls):
             return True
 
         def has_view_permission(self, request, obj=None):
-            if obj is None:
+            if obj is None or request.user.is_superuser:
                 return True
             return obj.organization.is_admin(request.user) or obj.organization.is_advisor(request.user)
 
@@ -154,7 +154,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         return True
 
     def has_view_permission(self, request, obj=None):
-        if obj is None:
+        if obj is None or request.user.is_superuser:
             return True
         return obj.is_admin(request.user) or obj.is_advisor(request.user)
 
