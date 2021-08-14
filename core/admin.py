@@ -113,7 +113,7 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
     list_filter = ("is_staff", "is_superuser", "grad_year")
     search_fields = ("email", "first_name", "last_name")
     ordering = None
-    inlines = (AdvisorOrganizationAdmin, AdminOrganizationAdmin, ExpoPushTokenAdmin)
+    inlines = (AdvisorOrganizationAdmin, AdminOrganizationAdmin, MembershipAdmin, ExpoPushTokenAdmin)
 
 
 @admin.register(Organization)
@@ -184,11 +184,15 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
         class Meta:
             fields = ("organization", "name", "description", "start", "end", "points", "submission_type")
 
+    class SubmissionAdmin(admin.TabularInline, DynamicArrayMixin):
+        model = Submission
+        extra = 0
+
     date_hierarchy = "start"
     list_display = ("name", "organization", "start", "end", "points", "user_count")
     search_fields = ("name",)
     readonly_fields = ("code", "qr_code")
-    autocomplete_fields = ("users",)
+    inlines = (SubmissionAdmin,)
 
     def user_count(self, obj):
         return obj.users.count()

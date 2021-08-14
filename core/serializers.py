@@ -176,42 +176,59 @@ class EventSerializer(serializers.ModelSerializer):
             return event.users.filter(id=request.user.id).exists()
 
 
-class ClaimEventSerializer(serializers.ModelSerializer):
+class SubmissionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = models.Event
-        fields = ("id", "url", "organization", "name", "description", "start", "end", "code", "points")
+        model = models.Submission
+        fields = ("event", "file")
 
-    class CodeRequired(Exception):
+    event = EventSerializer(read_only=True)
+    file = serializers.FileField(read_only=True)
+
+
+class CreateSubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Submission
+        fields = ("event_id", "event", "file", "code")
+
+    class WrongSubmissionType(Exception):
         pass
 
     class AlreadyClaimed(Exception):
         pass
 
-    organization = NestedOrganizationSerializer(read_only=True)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for name, field in self.fields.items():
-            field.read_only = name not in ("code", "id")
+    event_id = serializers.PrimaryKeyRelatedField(
+        queryset=models.Event.objects.all(), allow_null=True, write_only=True
+    )
+    event = EventSerializer(read_only=True)
+    file = serializers.FileField(allow_null=True)
+    code = serializers.IntegerField(allow_null=True, write_only=True)
 
     @transaction.atomic
     def create(self, validated_data):
         user = validated_data.pop("user")
-        event = self.Meta.model.objects.get(**validated_data)
+        code = validated_data.pop("code", None)
+        event = validated_data.pop("event_id", None)
+        file = validated_data.pop("file", None)
 
-        if event.submission_type == models.EventSubmissionType.CODE and "code" not in validated_data:
-            raise self.CodeRequired
+        has_code = code is not None
+        has_event = event is not None
+        has_file = file is not None
+        if not (has_code is not has_event is has_file):
+            raise serializers.ValidationError({"code": "Please provide code or both event_id and file."})
 
-        if event.users.filter(id=user.id).exists():
-            raise self.AlreadyClaimed
+        submission_type = models.EventSubmissionType.CODE if has_code else models.EventSubmissionType.FILE
+        if submission_type is models.EventSubmissionType.CODE:
+            event = models.Event.objects.get(code=code)
+
+        if submission_type != event.submission_type:
+            raise self.WrongSubmissionType
 
         membership, _ = models.Membership.objects.get_or_create(user=user, organization=event.organization)
         membership.points += event.points
         membership.active = True
         membership.save()
-        event.users.add(user)
 
-        return event
+        return self.Meta.model.objects.create(event=event, user=user, file=file)
 
 
 class PrizeSerializer(serializers.ModelSerializer):

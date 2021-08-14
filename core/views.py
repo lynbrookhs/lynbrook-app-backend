@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
 from django.views.generic.base import TemplateView
-from rest_framework import filters, mixins, pagination, status, views, viewsets
+from rest_framework import mixins, pagination, parsers, status, views, viewsets
 from rest_framework.response import Response
 from rest_framework_extensions.mixins import NestedViewSetMixin
 
@@ -99,14 +99,15 @@ class MembershipViewSet(
         return super().handle_exception(exc)
 
 
-class UserEventViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin):
+class SubmissionViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin):
     permission_classes = (NestedUserAccessPolicy,)
-    queryset = models.Event.objects.all()
+    queryset = models.Submission.objects.all()
+    lookup_field = "event"
 
     def get_serializer_class(self):
         if self.action == "create":
-            return serializers.ClaimEventSerializer
-        return serializers.EventSerializer
+            return serializers.CreateSubmissionSerializer
+        return serializers.SubmissionSerializer
 
     def perform_create(self, serializer):
         serializer.save(user=self.get_user())
@@ -114,9 +115,9 @@ class UserEventViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mi
     def handle_exception(self, exc):
         if isinstance(exc, models.Event.DoesNotExist):
             return Response(status=status.HTTP_404_NOT_FOUND)
-        if isinstance(exc, serializers.ClaimEventSerializer.CodeRequired):
+        if isinstance(exc, serializers.CreateSubmissionSerializer.WrongSubmissionType):
             return Response(status=status.HTTP_400_BAD_REQUEST)
-        if isinstance(exc, serializers.ClaimEventSerializer.AlreadyClaimed):
+        if isinstance(exc, IntegrityError):
             return Response(status=status.HTTP_409_CONFLICT)
         return super().handle_exception(exc)
 
@@ -148,7 +149,7 @@ class EventViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.EventSerializer
 
     def get_queryset(self):
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         return models.Event.objects.filter(
             start__lte=now, end__gte=now, organization__users=self.request.user
         )

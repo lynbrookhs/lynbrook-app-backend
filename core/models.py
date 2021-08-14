@@ -197,10 +197,19 @@ class Event(Model):
     points = PositiveIntegerField()
     code = PositiveIntegerField(default=random_code)
     submission_type = IntegerField(choices=EventSubmissionType.choices)
-    users = ManyToManyField(USER_MODEL, blank=True, related_name="events")
+    users = ManyToManyField(USER_MODEL, blank=True, through="Submission", related_name="events")
 
     def __str__(self):
         return self.name
+
+
+class Submission(Model):
+    class Meta:
+        constraints = [UniqueConstraint(name="%(app_label)s_%(class)s_user_event", fields=("user", "event"))]
+
+    user = ForeignKey(User, on_delete=CASCADE, related_name="+")
+    event = ForeignKey(Event, on_delete=CASCADE, related_name="submissions")
+    file = FileField(null=True, blank=True)
 
 
 class Post(Model):
