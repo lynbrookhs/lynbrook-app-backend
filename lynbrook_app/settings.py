@@ -202,3 +202,5 @@ GS_PROJECT_ID = "lynbrook-high"
 GS_CREDENTIALS = Credentials.from_service_account_file(os.environ["GCS_CREDS"])
 GS_DEFAULT_ACL = "authenticatedRead"
 GS_FILE_OVERWRITE = False
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
