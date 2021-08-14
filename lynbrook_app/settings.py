@@ -196,9 +196,6 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 
 LOGIN_REDIRECT_URL = "/admin/"
 
-if not DEBUG:
-    STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
-
 DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
 GS_BUCKET_NAME = "lynbrook-app"
 GS_PROJECT_ID = "lynbrook-high"
