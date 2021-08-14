@@ -197,11 +197,11 @@ class CreateSubmissionSerializer(serializers.ModelSerializer):
         pass
 
     event_id = serializers.PrimaryKeyRelatedField(
-        queryset=models.Event.objects.all(), allow_null=True, write_only=True
+        queryset=models.Event.objects.all(), required=False, allow_null=True, write_only=True
     )
     event = EventSerializer(read_only=True)
-    file = serializers.FileField(allow_null=True)
-    code = serializers.IntegerField(allow_null=True, write_only=True)
+    file = serializers.FileField(required=False, allow_null=True)
+    code = serializers.IntegerField(required=False, allow_null=True, write_only=True)
 
     @transaction.atomic
     def create(self, validated_data):
