@@ -123,10 +123,22 @@ class SubmissionViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, m
 
 
 class SubmissionViewSetOld(SubmissionViewSet):
-    def create(self, request, *args, **kwargs):
-        resp = super().create(request, *args, **kwargs)
+    def __tl(self, resp):
+        resp.data = [x["event"] for x in resp.data]
+        return resp
+
+    def __t(self, resp):
         resp.data = resp.data["event"]
         return resp
+
+    def list(self, request, *args, **kwargs):
+        return self.__tl(super().list(request, *args, **kwargs))
+
+    def retrieve(self, request, *args, **kwargs):
+        return self.__t(super().retrieve(request, *args, **kwargs))
+
+    def create(self, request, *args, **kwargs):
+        return self.__t(super().create(request, *args, **kwargs))
 
 
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
