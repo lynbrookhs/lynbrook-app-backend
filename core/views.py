@@ -122,6 +122,13 @@ class SubmissionViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, m
         return super().handle_exception(exc)
 
 
+class SubmissionViewSetOld(SubmissionViewSet):
+    def create(self, request, *args, **kwargs):
+        resp = super().create(request, *args, **kwargs)
+        resp.data = resp.data["event"]
+        return resp
+
+
 class OrganizationViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.OrganizationSerializer
 
@@ -150,9 +157,7 @@ class EventViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         now = datetime.now(timezone.utc)
-        return models.Event.objects.filter(
-            start__lte=now, end__gte=now, organization__users=self.request.user
-        )
+        return models.Event.objects.filter(start__lte=now, end__gte=now, organization__users=self.request.user)
 
 
 class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
