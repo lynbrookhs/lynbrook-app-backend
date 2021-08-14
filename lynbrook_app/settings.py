@@ -1,3 +1,5 @@
+from google.oauth2.service_account import Credentials
+
 """
 Django settings for lynbrook_app project.
 
@@ -193,3 +195,13 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 STATIC_ROOT = os.path.join(BASE_DIR, "static/")
 
 LOGIN_REDIRECT_URL = "/admin/"
+
+if not DEBUG:
+    STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
+
+DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
+GS_BUCKET_NAME = "lynbrook-app"
+GS_PROJECT_ID = "lynbrook-high"
+GS_CREDENTIALS = Credentials.from_service_account_file(os.environ["GCS_CREDS"])
+GS_DEFAULT_ACL = "authenticatedRead"
+GS_FILE_OVERWRITE = False
