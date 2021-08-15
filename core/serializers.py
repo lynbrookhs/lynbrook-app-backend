@@ -10,7 +10,7 @@ from . import models
 class NestedUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ("id", "first_name", "last_name")
+        fields = ("id", "first_name", "last_name", "type")
 
 
 class NestedOrganizationSerializer(serializers.ModelSerializer):
@@ -66,6 +66,7 @@ class UserSerializer(serializers.ModelSerializer):
             "first_name",
             "last_name",
             "email",
+            "type",
             "picture_url",
             "grad_year",
             "is_staff",
