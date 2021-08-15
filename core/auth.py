@@ -16,7 +16,7 @@ class GoogleOAuth(GoogleOAuth2):
     def get_user_details(self, data):
         return {
             **super().get_user_details(data),
-            "type": UserType.STUDENT,
+            "type": UserType.STUDENT if data["hd"] == "student.fuhsd.org" else UserType.STAFF,
             "picture_url": data["picture"],
         }
 
@@ -30,6 +30,7 @@ class SchoologyOAuth(BaseOAuth1):
     AUTHORIZATION_URL = f"{SCHOOLOGY_URL}/oauth/authorize"
     REQUEST_TOKEN_URL = f"{API_BASE_URL}/oauth/request_token"
     ACCESS_TOKEN_URL = f"{API_BASE_URL}/oauth/access_token"
+    USER_DATA_URL = f"{API_BASE_URL}/users/me"
     REDIRECT_URI_PARAMETER_NAME = "oauth_callback"
     EXTRA_DATA = [
         ("id", "id"),
@@ -38,22 +39,18 @@ class SchoologyOAuth(BaseOAuth1):
         ("username", "username"),
     ]
 
-    USER_DATA_URL = f"{API_BASE_URL}/users/me"
-    COURSE_DATA_URL = f"{API_BASE_URL}/users/{{id}}/sections"
-
     def get_user_details(self, data):
         return {
             "email": data["primary_email"],
             "first_name": data["name_first_preferred"] or data["name_first"],
             "last_name": data["name_last"],
-            "type": UserType.STUDENT,
+            "type": UserType.STAFF if data["grad_year"] != "" else UserType.STUDENT,
             "grad_year": int(s) if (s := data["grad_year"]) else None,
             "picture_url": data["picture_url"],
         }
 
     def user_data(self, access_token, *args, **kwargs):
         user = self.oauth_request(access_token, self.USER_DATA_URL).json()
-        # courses = self.oauth_request(access_token, self.COURSE_DATA_URL.format_map(user)).json()
         return user
 
     def request(self, url, method="GET", *args, **kwargs):

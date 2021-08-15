@@ -38,9 +38,7 @@ def with_organization_permissions(cls):
             qs = super().get_queryset(request)
             if request.user.is_superuser:
                 return qs
-            return qs.filter(
-                Q(organization__admins=request.user) | Q(organization__advisors=request.user)
-            ).distinct()
+            return qs.filter(Q(organization__admins=request.user) | Q(organization__advisors=request.user)).distinct()
 
         def get_form(self, request, obj=None, change=False, **kwargs):
             if not request.user.is_superuser:
@@ -50,9 +48,7 @@ def with_organization_permissions(cls):
                     def __init__(self, *args, **kwargs):
                         super().__init__(*args, **kwargs)
                         q = Q(admins=request.user) | Q(advisors=request.user)
-                        self.fields["organization"].queryset = (
-                            self.fields["organization"].queryset.filter(q).distinct()
-                        )
+                        self.fields["organization"].queryset = self.fields["organization"].queryset.filter(q).distinct()
 
                 kwargs["form"] = UserForm
 
@@ -103,12 +99,10 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
 
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        (_("Personal info"), {"fields": ("first_name", "last_name", "grad_year")}),
+        (_("Personal info"), {"fields": ("first_name", "last_name", "type", "grad_year")}),
         (_("Permissions"), {"fields": ("is_active", "is_staff", "is_superuser")}),
     )
-    add_fieldsets = (
-        (None, {"classes": ("wide",), "fields": ("email", "grad_year", "password1", "password2")}),
-    )
+    add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "grad_year", "password1", "password2")}),)
     list_display = ("email", "first_name", "last_name", "is_staff")
     list_filter = ("is_staff", "is_superuser", "grad_year")
     search_fields = ("email", "first_name", "last_name")
