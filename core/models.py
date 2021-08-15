@@ -20,6 +20,12 @@ def random_code():
     return random.randint(100000, 999999)
 
 
+class UserType(IntegerChoices):
+    STUDENT = 1
+    STAFF = 2
+    GUEST = 3
+
+
 class DayOfWeek(IntegerChoices):
     MONDAY = 0
     TUESDAY = 1
@@ -87,12 +93,14 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ["type"]
     objects = UserManager()
 
     username = None
     email = LowercaseEmailField(_("email address"), unique=True)
+    type = IntegerField(choices=UserType.choices)
     grad_year = IntegerField(null=True, blank=True)
+
     organizations = ManyToManyField("Organization", through="Membership", related_name="users")
     picture_url = URLField(
         default="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"
@@ -175,9 +183,7 @@ class Membership(Model):
     class Meta:
         ordering = ("organization__type", "organization__name")
         constraints = [
-            UniqueConstraint(
-                name="%(app_label)s_%(class)s_user_organization", fields=("user", "organization")
-            )
+            UniqueConstraint(name="%(app_label)s_%(class)s_user_organization", fields=("user", "organization"))
         ]
 
     user = ForeignKey(User, on_delete=CASCADE, related_name="memberships")

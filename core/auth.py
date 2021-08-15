@@ -4,6 +4,8 @@ from social_core.backends.oauth import BaseOAuth1
 from social_core.exceptions import AuthFailed
 from social_core.utils import SSLHttpAdapter, user_agent
 
+from core.models import UserType
+
 API_BASE_URL = "https://api.schoology.com/v1"
 SCHOOLOGY_URL = "https://fuhsd.schoology.com"
 
@@ -14,6 +16,7 @@ class GoogleOAuth(GoogleOAuth2):
     def get_user_details(self, data):
         return {
             **super().get_user_details(data),
+            "type": UserType.STUDENT,
             "picture_url": data["picture"],
         }
 
@@ -22,8 +25,6 @@ class GoogleOAuth(GoogleOAuth2):
 
 
 class SchoologyOAuth(BaseOAuth1):
-    """Schoology OAuth authentication backend"""
-
     name = "schoology"
     ID_KEY = "uid"
     AUTHORIZATION_URL = f"{SCHOOLOGY_URL}/oauth/authorize"
@@ -45,7 +46,8 @@ class SchoologyOAuth(BaseOAuth1):
             "email": data["primary_email"],
             "first_name": data["name_first_preferred"] or data["name_first"],
             "last_name": data["name_last"],
-            "grad_year": int(data["grad_year"] or 0),
+            "type": UserType.STUDENT,
+            "grad_year": int(s) if (s := data["grad_year"]) else None,
             "picture_url": data["picture_url"],
         }
 
