@@ -309,6 +309,9 @@ class Period(Model):
 
 
 class SchedulePeriod(Model):
+    class Meta:
+        ordering = ("start",)
+
     schedule = ForeignKey(Schedule, on_delete=CASCADE, related_name="periods")
     period = ForeignKey(Period, on_delete=CASCADE, related_name="+")
 
