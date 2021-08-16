@@ -74,6 +74,12 @@ class UserSerializer(serializers.ModelSerializer):
             "memberships",
         )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name, field in self.fields.items():
+            if name != "grad_year":
+                field.read_only = True
+
     memberships = NestedMembershipSerializer(many=True, read_only=True)
 
 

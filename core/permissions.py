@@ -5,7 +5,7 @@ from rest_access_policy import AccessPolicy
 class UserAccessPolicy(AccessPolicy):
     statements = [
         dict(action=["list"], principal="*", effect="allow"),
-        dict(action=["retrieve"], principal="*", effect="allow", condition=["is_user"]),
+        dict(action=["retrieve", "update"], principal="*", effect="allow", condition=["is_user"]),
     ]
 
     def is_user(self, request, view, *args, **kwargs):

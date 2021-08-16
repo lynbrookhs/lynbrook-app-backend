@@ -42,7 +42,7 @@ class NestedUserViewSetMixin(NestedViewSetMixin):
         return get_user_model().objects.get(pk=user_id)
 
 
-class UserViewSet(viewsets.ReadOnlyModelViewSet):
+class UserViewSet(viewsets.ReadOnlyModelViewSet, mixins.UpdateModelMixin):
     permission_classes = (UserAccessPolicy,)
     serializer_class = serializers.UserSerializer
 
