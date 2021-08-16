@@ -50,9 +50,13 @@ class NestedSchedulePeriodSerializer(serializers.ModelSerializer):
 class NestedScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Schedule
-        fields = ("id", "url", "name", "periods")
+        fields = ("id", "url", "name", "date", "periods")
 
     periods = NestedSchedulePeriodSerializer(many=True, read_only=True)
+    date = serializers.SerializerMethodField(read_only=True)
+
+    def get_date(self, schedule):
+        return self.context.get("date")
 
 
 # Main

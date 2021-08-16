@@ -189,11 +189,14 @@ class WeekScheduleView(ABC, views.APIView):
     def start(self, request):
         pass
 
-    def get(self, request):
-        start = self.start(request)
-        objects = [models.Schedule.get_for_day(start + timedelta(days=x)) for x in models.DayOfWeek]
-        serializer = serializers.NestedScheduleSerializer(objects, context={"request": request}, many=True)
-        return Response({"start": start, "end": start + timedelta(days=6), "weekdays": serializer.data})
+    def get(self, r):
+        start = self.start(r)
+        dates = [start + timedelta(days=x) for x in models.DayOfWeek]
+        weekdays = [
+            serializers.NestedScheduleSerializer(models.Schedule.get_for_day(x), context={"request": r, "date": x})
+            for x in dates
+        ]
+        return Response({"start": start, "end": start + timedelta(days=6), "weekdays": [x.data for x in weekdays]})
 
 
 class CurrentScheduleView(WeekScheduleView):
