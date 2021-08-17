@@ -13,14 +13,34 @@ from .models import *
 admin.site.site_header = "Lynbrook ASB"
 
 
+def with_inline_organization_permissions(get_organization=lambda x: x):
+    def deco(cls):
+        class Admin(cls):
+            def has_view_permission(self, request, obj=None):
+                if obj is None or request.user.is_superuser:
+                    return True
+                org = get_organization(obj)
+                return org.is_admin(request.user) or org.is_advisor(request.user)
+
+            def has_change_permission(self, request, obj=None):
+                return self.has_view_permission(request, obj)
+
+            def has_add_permission(self, request, obj=None):
+                return self.has_change_permission(request, obj)
+
+            def has_delete_permission(self, request, obj=None):
+                return self.has_change_permission(request, obj)
+
+        return Admin
+
+    return deco
+
+
 def with_organization_permissions(cls):
     class Admin(cls):
         list_filter = (AdminAdvisorListFilter,)
 
         def has_module_permission(self, request):
-            return True
-
-        def has_add_permission(self, request):
             return True
 
         def has_view_permission(self, request, obj=None):
@@ -30,6 +50,9 @@ def with_organization_permissions(cls):
 
         def has_change_permission(self, request, obj=None):
             return self.has_view_permission(request, obj)
+
+        def has_add_permission(self, request):
+            return True
 
         def has_delete_permission(self, request, obj=None):
             return self.has_change_permission(request, obj)
@@ -112,9 +135,14 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    @with_inline_organization_permissions()
     class InlineLinkAdmin(admin.TabularInline, DynamicArrayMixin):
         model = OrganizationLink
         extra = 0
+
+        def has_view_permission(self, request, obj=None):
+            print(obj)
+            return super().has_view_permission(request, obj=obj)
 
     class AdvisorForm(forms.ModelForm):
         class Meta:
@@ -178,6 +206,7 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
         class Meta:
             fields = ("organization", "name", "description", "start", "end", "points", "submission_type")
 
+    @with_inline_organization_permissions(lambda x: x.organization)
     class SubmissionAdmin(admin.TabularInline, DynamicArrayMixin):
         model = Submission
         extra = 0
@@ -201,6 +230,7 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
 @admin.register(Post)
 @with_organization_permissions
 class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    @with_inline_organization_permissions(lambda x: x.organization)
     class InlinePollAdmin(admin.StackedInline, DynamicArrayMixin):
         model = Poll
         extra = 0
