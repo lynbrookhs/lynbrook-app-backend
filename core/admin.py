@@ -222,6 +222,8 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     @admin.display(description="QR Code")
     def qr_code(self, obj):
+        if obj.code is None:
+            return "-"
         qr_svg = qrcode.make(f"lhs://{obj.code}", image_factory=SvgPathFillImage, box_size=50, border=0)
         uri_svg = DataURI.make("image/svg+xml", charset="UTF-8", base64=True, data=qr_svg.to_string())
         return mark_safe(f'<img src="{uri_svg}" alt="lhs://{obj.code}">')

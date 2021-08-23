@@ -193,6 +193,17 @@ class Membership(Model):
 
 
 class Event(Model):
+    class Meta:
+        constraints = [
+            CheckConstraint(
+                name="%(app_label)s_%(class)s_submission_type_code",
+                check=(
+                    Q(submission_type=EventSubmissionType.CODE, code__isnull=False)
+                    | (~Q(submission_type=EventSubmissionType.CODE) & Q(code__isnull=True))
+                ),
+            )
+        ]
+
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="events")
 
     name = CharField(max_length=200)
@@ -201,8 +212,9 @@ class Event(Model):
     end = DateTimeField()
 
     points = PositiveIntegerField()
-    code = PositiveIntegerField(default=random_code)
     submission_type = IntegerField(choices=EventSubmissionType.choices)
+    code = PositiveIntegerField(default=random_code, null=True, blank=True)
+
     users = ManyToManyField(USER_MODEL, blank=True, through="Submission", related_name="events")
 
     def __str__(self):
