@@ -204,3 +204,12 @@ GS_DEFAULT_ACL = "authenticatedRead"
 GS_FILE_OVERWRITE = False
 
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"verbose": {"format": "{levelname} {asctime} {module} {message}", "style": "{"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "verbose"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {"django": {"handlers": ["console"], "level": "INFO", "propagate": True}},
+}
