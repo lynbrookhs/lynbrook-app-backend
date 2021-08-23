@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import serializers
+from django.db.models import Count
 
 from . import models
 
@@ -176,15 +177,23 @@ class EventSerializer(serializers.ModelSerializer):
             "points",
             "submission_type",
             "claimed",
+            "leaderboard",
         )
 
     organization = NestedOrganizationSerializer(read_only=True)
     claimed = serializers.SerializerMethodField()
+    leaderboard = serializers.SerializerMethodField()
 
     def get_claimed(self, event):
         request = self.context.get("request")
         if request:
             return event.users.filter(id=request.user.id).exists()
+
+    def get_leaderboard(self, event):
+        return {
+            x["user__grad_year"]: x["count"]
+            for x in event.submissions.values("user__grad_year").annotate(count=Count("user__grad_year"))
+        }
 
 
 class SubmissionSerializer(serializers.ModelSerializer):
