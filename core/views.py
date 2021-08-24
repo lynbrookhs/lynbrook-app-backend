@@ -168,8 +168,11 @@ class EventViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.EventSerializer
 
     def get_queryset(self):
-        now = datetime.now(timezone.utc)
-        return models.Event.objects.filter(start__lte=now, end__gte=now, organization__users=self.request.user)
+        qs = models.Event.objects.all()
+        if self.action == "list":
+            now = datetime.now(timezone.utc)
+            qs = qs.filter(start__lte=now, end__gte=now, organization__users=self.request.user)
+        return qs
 
 
 class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
