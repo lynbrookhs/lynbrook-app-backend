@@ -212,3 +212,8 @@ class NextScheduleView(WeekScheduleView):
     def start(self, request):
         start = date.today() + timedelta(days=9)
         return start - timedelta(days=start.weekday())
+
+
+class AppVersionView(views.APIView):
+    def get(self, r):
+        return Response({"android": 26, "ios": "2.2.0"})
