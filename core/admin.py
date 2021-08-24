@@ -36,48 +36,57 @@ def with_inline_organization_permissions(get_organization=lambda x: x):
     return deco
 
 
-def with_organization_permissions(cls):
-    class Admin(cls):
-        list_filter = (AdminAdvisorListFilter,)
+def with_organization_permissions(get_organization=lambda x: x.organization, organization_field="organization"):
+    def deco(cls):
+        class Admin(cls):
+            list_filter = (AdminAdvisorListFilter,)
 
-        def has_module_permission(self, request):
-            return True
-
-        def has_view_permission(self, request, obj=None):
-            if obj is None or request.user.is_superuser:
+            def has_module_permission(self, request):
                 return True
-            return obj.organization.is_admin(request.user) or obj.organization.is_advisor(request.user)
 
-        def has_change_permission(self, request, obj=None):
-            return self.has_view_permission(request, obj)
+            def has_view_permission(self, request, obj=None):
+                if obj is None or request.user.is_superuser:
+                    return True
+                org = get_organization(obj)
+                return org.is_admin(request.user) or org.is_advisor(request.user)
 
-        def has_add_permission(self, request):
-            return True
+            def has_change_permission(self, request, obj=None):
+                return self.has_view_permission(request, obj)
 
-        def has_delete_permission(self, request, obj=None):
-            return self.has_change_permission(request, obj)
+            def has_add_permission(self, request):
+                return True
 
-        def get_queryset(self, request):
-            qs = super().get_queryset(request)
-            if request.user.is_superuser:
-                return qs
-            return qs.filter(Q(organization__admins=request.user) | Q(organization__advisors=request.user)).distinct()
+            def has_delete_permission(self, request, obj=None):
+                return self.has_change_permission(request, obj)
 
-        def get_form(self, request, obj=None, change=False, **kwargs):
-            if not request.user.is_superuser:
-                form_class = cls.AdminAdvisorForm
+            def get_queryset(self, request):
+                qs = super().get_queryset(request)
+                if request.user.is_superuser:
+                    return qs
+                return qs.filter(
+                    Q(**{f"{organization_field}__admins": request.user})
+                    | Q(**{f"{organization_field}__advisors": request.user})
+                ).distinct()
 
-                class UserForm(form_class):
-                    def __init__(self, *args, **kwargs):
-                        super().__init__(*args, **kwargs)
-                        q = Q(admins=request.user) | Q(advisors=request.user)
-                        self.fields["organization"].queryset = self.fields["organization"].queryset.filter(q).distinct()
+            def get_form(self, request, obj=None, change=False, **kwargs):
+                if not request.user.is_superuser:
+                    form_class = cls.AdminAdvisorForm
 
-                kwargs["form"] = UserForm
+                    class UserForm(form_class):
+                        def __init__(self, *args, **kwargs):
+                            super().__init__(*args, **kwargs)
+                            q = Q(admins=request.user) | Q(advisors=request.user)
+                            self.fields["organization"].queryset = (
+                                self.fields["organization"].queryset.filter(q).distinct()
+                            )
 
-            return super().get_form(request, obj=obj, **kwargs)
+                    kwargs["form"] = UserForm
 
-    return Admin
+                return super().get_form(request, obj=obj, **kwargs)
+
+        return Admin
+
+    return deco
 
 
 class AdminAdvisorListFilter(admin.SimpleListFilter):
@@ -200,22 +209,16 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 
 @admin.register(Event)
-@with_organization_permissions
+@with_organization_permissions()
 class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     class AdminAdvisorForm(forms.ModelForm):
         class Meta:
             fields = ("organization", "name", "description", "start", "end", "points", "submission_type")
 
-    @with_inline_organization_permissions(lambda x: x.organization)
-    class SubmissionAdmin(admin.TabularInline, DynamicArrayMixin):
-        model = Submission
-        extra = 0
-
     date_hierarchy = "start"
     list_display = ("name", "organization", "start", "end", "points", "user_count")
     search_fields = ("name",)
     readonly_fields = ("code", "qr_code")
-    # inlines = (SubmissionAdmin,)
 
     def user_count(self, obj):
         return obj.users.count()
@@ -229,8 +232,16 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
         return mark_safe(f'<img src="{uri_svg}" alt="lhs://{obj.code}">')
 
 
+@admin.register(Submission)
+@with_organization_permissions(lambda x: x.event.organization, "event__organization")
+class SubmissionAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    model = Submission
+    search_fields = ("event__name", "user__first_name", "user__last_name")
+    list_display = ("user", "event", "file")
+
+
 @admin.register(Post)
-@with_organization_permissions
+@with_organization_permissions()
 class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
     @with_inline_organization_permissions(lambda x: x.organization)
     class InlinePollAdmin(admin.StackedInline, DynamicArrayMixin):
@@ -249,7 +260,7 @@ class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 
 @admin.register(Prize)
-@with_organization_permissions
+@with_organization_permissions()
 class PrizeAdmin(admin.ModelAdmin, DynamicArrayMixin):
     class AdminAdvisorForm(forms.ModelForm):
         class Meta:

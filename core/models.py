@@ -229,6 +229,9 @@ class Submission(Model):
     event = ForeignKey(Event, on_delete=CASCADE, related_name="submissions")
     file = FileField(null=True, blank=True)
 
+    def __str__(self):
+        return f"{self.event} — {self.user}"
+
 
 class Post(Model):
     class Meta:
