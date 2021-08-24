@@ -215,5 +215,7 @@ class NextScheduleView(WeekScheduleView):
 
 
 class AppVersionView(views.APIView):
+    permission_classes = ()
+
     def get(self, r):
         return Response({"android": 26, "ios": "2.2.0"})
