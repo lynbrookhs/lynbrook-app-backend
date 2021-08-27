@@ -8,7 +8,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db.models import *
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.models.fields import ArrayField
@@ -213,7 +213,7 @@ class Event(Model):
 
     points = PositiveIntegerField()
     submission_type = IntegerField(choices=EventSubmissionType.choices)
-    code = PositiveIntegerField(default=random_code, null=True, blank=True)
+    code = PositiveIntegerField(null=True, blank=True)
 
     users = ManyToManyField(USER_MODEL, blank=True, through="Submission", related_name="events")
 
@@ -334,8 +334,14 @@ class SchedulePeriod(Model):
     end = TimeField()
 
 
+@receiver(pre_save, sender=Event)
+def add_code(*, instance=None, **kwargs):
+    if instance.submission_type == EventSubmissionType.CODE and instance.code is None:
+        instance.code = random_code()
+
+
 @receiver(post_save, sender=USER_MODEL)
-def add_required_orgs(*, sender, instance=None, **kwargs):
+def add_required_orgs(*, instance=None, **kwargs):
     q = Q(required=True) | Q(required_grad_year__isnull=False, required_grad_year=instance.grad_year)
     orgs = Organization.objects.filter(q)
     instance.organizations.add(*orgs)
@@ -346,7 +352,7 @@ def add_required_orgs(*, sender, instance=None, **kwargs):
 
 
 @receiver(post_save, sender=Organization)
-def add_required_users(*, sender, instance=None, **kwargs):
+def add_required_users(*, instance=None, **kwargs):
     if instance.required:
         users = get_user_model().objects.all()
     elif instance.required_grad_year is not None:
