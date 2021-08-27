@@ -2,9 +2,7 @@ import qrcode
 from datauri import DataURI
 from django import forms
 from django.contrib import admin
-from django.contrib.admin.utils import unquote
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.core.exceptions import PermissionDenied
 from django.shortcuts import render
 from django.urls import path
 from django.urls.base import reverse
@@ -14,8 +12,6 @@ from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 from qrcode.image.svg import SvgPathFillImage
 
 from .models import *
-
-admin.site.site_header = "Lynbrook ASB"
 
 
 def with_inline_organization_permissions(get_organization=lambda x: x):

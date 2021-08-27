@@ -35,7 +35,7 @@ ALLOWED_HOSTS = ["*"] if DEBUG else ["lynbrookasb.org", "www.lynbrookasb.org"]
 # Application definition
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    "lynbrook_app.apps.CoreAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
