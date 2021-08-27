@@ -220,14 +220,12 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     def points_view(self, request, object_id):
         qs = super().get_queryset(request)
+        qs = qs.prefetch_related(
+            Prefetch("memberships", Membership.objects.select_related("user").order_by("-points")),
+            Prefetch("events", Event.objects.prefetch_related("submissions")),
+        )
         try:
-            org = qs.prefetch_related(
-                Prefetch(
-                    "memberships",
-                    Membership.objects.filter(points__gt=0).select_related("user").order_by("-points"),
-                ),
-                Prefetch("events", Event.objects.prefetch_related("submissions")),
-            ).get(id=object_id)
+            org = qs.get(id=object_id)
         except self.model.DoesNotExist:
             return self._get_obj_does_not_exist_redirect(request, self.model._meta, object_id)
 
