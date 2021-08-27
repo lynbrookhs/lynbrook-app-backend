@@ -114,6 +114,7 @@ class User(AbstractUser):
     def to_json(self):
         return dict(
             id=self.pk,
+            email=self.email,
             first_name=self.first_name,
             last_name=self.last_name,
             grad_year=self.grad_year,

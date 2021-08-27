@@ -1,8 +1,12 @@
+import csv
+import io
+
 import qrcode
 from datauri import DataURI
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.http.response import Http404, HttpResponse
 from django.shortcuts import render
 from django.urls import path
 from django.urls.base import reverse
@@ -214,23 +218,25 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     def get_urls(self):
         return [
+            path("<path:object_id>/points/csv/", self.points_csv_view, name="core_organization_points"),
             path("<path:object_id>/points/", self.points_view, name="core_organization_points"),
             *super().get_urls(),
         ]
 
-    def points_view(self, request, object_id):
+    def get_org_with_points(self, request, object_id):
         qs = super().get_queryset(request)
         qs = qs.prefetch_related(
             Prefetch("memberships", Membership.objects.select_related("user").order_by("-points")),
             Prefetch("events", Event.objects.prefetch_related("submissions")),
         )
+        return qs.get(id=object_id)
+
+    def points_view(self, request, object_id):
         try:
-            org = qs.get(id=object_id)
+            org = self.get_org_with_points(request, object_id)
         except self.model.DoesNotExist:
             return self._get_obj_does_not_exist_redirect(request, self.model._meta, object_id)
-
         events = [(e, set(x.user_id for x in e.submissions.all())) for e in org.events.all()]
-
         context = dict(
             org=org,
             events=[event.name for event, _ in events],
@@ -244,6 +250,32 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             ],
         )
         return render(request, "core/organization_points.html", context)
+
+    def points_csv_view(self, request, object_id):
+        try:
+            org = self.get_org_with_points(request, object_id)
+        except self.model.DoesNotExist:
+            raise Http404
+
+        events = [(e, set(x.user_id for x in e.submissions.all())) for e in org.events.all()]
+
+        response = HttpResponse(
+            content_type="text/csv", headers={"Content-Disposition": 'attachment; filename="points.csv"'}
+        )
+        writer = csv.DictWriter(
+            response,
+            fieldnames=["id", "email", "first_name", "last_name", "grad_year", "points", *[e.name for e, _ in events]],
+        )
+        writer.writeheader()
+        for membership in org.memberships.all():
+            writer.writerow(
+                dict(
+                    **membership.user.to_json(),
+                    points=membership.points,
+                    **{event.name: event.points for event, users in events if membership.user.id in users},
+                )
+            )
+        return response
 
 
 @admin.register(Event)
