@@ -212,7 +212,7 @@ class Event(Model):
     end = DateTimeField()
 
     points = PositiveIntegerField()
-    submission_type = IntegerField(choices=EventSubmissionType.choices)
+    submission_type = IntegerField(choices=EventSubmissionType.choices, default=EventSubmissionType.CODE)
     code = PositiveIntegerField(null=True, blank=True)
 
     users = ManyToManyField(USER_MODEL, blank=True, through="Submission", related_name="events")
