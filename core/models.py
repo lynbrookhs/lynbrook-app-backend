@@ -111,6 +111,14 @@ class User(AbstractUser):
             return f"{self.first_name} {self.last_name} ({self.email})"
         return f"{self.first_name} {self.last_name}, {self.grad_year} ({self.email})"
 
+    def to_json(self):
+        return dict(
+            id=self.pk,
+            first_name=self.first_name,
+            last_name=self.last_name,
+            grad_year=self.grad_year,
+        )
+
 
 class ExpoPushToken(Model):
     user = ForeignKey(User, on_delete=CASCADE, related_name="expo_push_tokens")

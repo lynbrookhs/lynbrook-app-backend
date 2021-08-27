@@ -2,7 +2,12 @@ import qrcode
 from datauri import DataURI
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.utils import unquote
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import render
+from django.urls import path
+from django.urls.base import reverse
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
@@ -180,8 +185,9 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                 "ical_links",
             )
 
-    list_display = ("name", "type", "day", "time", "link")
+    list_display = ("name", "type", "day", "time", "link", "points_link")
     list_filter = ("type", "day", "category")
+    readonly_fields = ("points_link",)
     autocomplete_fields = ("advisors", "admins")
     inlines = (InlineLinkAdmin,)
 
@@ -206,6 +212,44 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         if not request.user.is_superuser:
             kwargs["form"] = self.AdvisorForm if obj.is_advisor(request.user) else self.AdminForm
         return super().get_form(request, obj=obj, **kwargs)
+
+    def points_link(self, obj):
+        return mark_safe(f'<a href={reverse("admin:core_organization_points", args=[obj.id])}>View Points</a>')
+
+    def get_urls(self):
+        return [
+            path("<path:object_id>/points/", self.points_view, name="core_organization_points"),
+            *super().get_urls(),
+        ]
+
+    def points_view(self, request, object_id):
+        qs = self.get_queryset(request)
+
+        try:
+            org = qs.prefetch_related(
+                Prefetch(
+                    "memberships", Membership.objects.filter(points__gt=0).select_related("user").order_by("-points")
+                ),
+                Prefetch("events", Event.objects.prefetch_related("submissions")),
+            ).get(id=object_id)
+        except self.model.DoesNotExist:
+            return self._get_obj_does_not_exist_redirect(request, self.model._meta, object_id)
+
+        events = [(e, set(x.user_id for x in e.submissions.all())) for e in org.events.all()]
+
+        context = dict(
+            org=org,
+            events=[event.name for event, _ in events],
+            members=[
+                dict(
+                    **membership.user.to_json(),
+                    points=membership.points,
+                    events=[event.points if membership.user.id in users else None for event, users in events],
+                )
+                for membership in org.memberships.all()
+            ],
+        )
+        return render(request, "core/organization_points.html", context)
 
 
 @admin.register(Event)

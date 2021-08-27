@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{{ org }} Points</title>
+
+    <link rel="stylesheet" type="text/css"
+        href="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.css">
+    <link rel="stylesheet" type="text/css" href="https://handsontable.com/static/css/main.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
+
+    <style>
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background-color: white;
+            box-shadow: 0 0 10px rgba(0 0 0 / 0.2);
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #hot {
+            margin-top: 50px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header">
+        <h1>{{ org }} Points</h1>
+    </div>
+    <div id="hot"></div>
+
+    {{ members|json_script:"members-data" }}
+    {{ events|json_script:"events-data" }}
+
+    <script>
+        const members = JSON.parse(document.getElementById("members-data").textContent);
+        const events = JSON.parse(document.getElementById("events-data").textContent);
+        const hotElement = document.querySelector("#hot");
+        const hot = new Handsontable(hotElement, {
+            data: members,
+            readOnly: true,
+            width: "auto",
+            height: "auto",
+            rowHeaders: true,
+            fixedColumnsLeft: 3,
+            colHeaders: [
+                "First Name",
+                "Last Name",
+                "Total Points",
+                ...events
+            ],
+            columns: [
+                { data: "first_name", type: "text" },
+                { data: "last_name", type: "text" },
+                { data: "points", type: "numeric" },
+                ...events.map((x, idx) => ({ data: `events.${idx}`, type: "numeric" }))
+            ],
+            multiColumnSorting: true,
+            language: "en-US",
+            licenseKey: "non-commercial-and-evaluation",
+        });
+    </script>
+</body>
+
+</html>
