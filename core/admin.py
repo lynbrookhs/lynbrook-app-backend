@@ -223,12 +223,12 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         ]
 
     def points_view(self, request, object_id):
-        qs = self.get_queryset(request)
-
+        qs = super().get_queryset(request)
         try:
             org = qs.prefetch_related(
                 Prefetch(
-                    "memberships", Membership.objects.filter(points__gt=0).select_related("user").order_by("-points")
+                    "memberships",
+                    Membership.objects.filter(points__gt=0).select_related("user").order_by("-points"),
                 ),
                 Prefetch("events", Event.objects.prefetch_related("submissions")),
             ).get(id=object_id)
