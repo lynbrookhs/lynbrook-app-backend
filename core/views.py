@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.db.models import Q
 from django.views.generic.base import TemplateView
 from rest_framework import mixins, pagination, parsers, status, views, viewsets
 from rest_framework.response import Response
@@ -171,7 +172,12 @@ class EventViewSet(viewsets.ReadOnlyModelViewSet):
         qs = models.Event.objects.all()
         if self.action == "list":
             now = datetime.now(timezone.utc)
-            qs = qs.filter(start__lte=now, end__gte=now, organization__users=self.request.user)
+            qs = qs.filter(
+                start__lte=now,
+                end__gte=now,
+                organization__memberships__user=self.request.user,
+                organization__memberships__active=True,
+            )
         return qs
 
 
