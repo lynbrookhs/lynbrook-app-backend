@@ -163,12 +163,12 @@ class Organization(Model):
     required_grad_year = IntegerField(null=True, blank=True)
 
     name = CharField(max_length=200)
-    description = TextField(null=True, blank=True)
+    description = TextField(blank=True)
     category = IntegerField(choices=ClubCategory.choices, null=True, blank=True)
 
     day = IntegerField(choices=DayOfWeek.choices, null=True, blank=True)
-    location = CharField(max_length=200, null=True, blank=True)
-    time = CharField(max_length=200, null=True, blank=True)
+    location = CharField(max_length=200, blank=True)
+    time = CharField(max_length=200, blank=True)
     link = URLField(null=True, blank=True)
 
     ical_links = ArrayField(URLField(), blank=True, default=list)
@@ -217,7 +217,7 @@ class Event(Model):
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="events")
 
     name = CharField(max_length=200)
-    description = TextField(null=True, blank=True)
+    description = TextField(blank=True)
     start = DateTimeField()
     end = DateTimeField()
 
