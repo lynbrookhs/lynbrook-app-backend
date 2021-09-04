@@ -185,7 +185,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                 "ical_links",
             )
 
-    list_display = ("name", "type", "day", "time", "link", "points_link")
+    list_display = ("name", "type", "day", "time", "location", "points_link")
     list_filter = ("type", "day", "category")
     readonly_fields = ("points_link",)
     autocomplete_fields = ("advisors", "admins")
