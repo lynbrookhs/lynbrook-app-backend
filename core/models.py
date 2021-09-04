@@ -167,7 +167,8 @@ class Organization(Model):
     category = IntegerField(choices=ClubCategory.choices, null=True, blank=True)
 
     day = IntegerField(choices=DayOfWeek.choices, null=True, blank=True)
-    time = TimeField(null=True, blank=True)
+    location = CharField(max_length=200, null=True, blank=True)
+    time = CharField(max_length=200, null=True, blank=True)
     link = URLField(null=True, blank=True)
 
     ical_links = ArrayField(URLField(), blank=True, default=list)
