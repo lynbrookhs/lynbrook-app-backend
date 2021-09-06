@@ -106,6 +106,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "admins",
             "day",
             "time",
+            "location",
             "link",
             "ical_links",
             "description",
