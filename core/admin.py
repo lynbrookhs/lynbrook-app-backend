@@ -44,8 +44,6 @@ def with_inline_organization_permissions(get_organization=lambda x: x):
 def with_organization_permissions(get_organization=lambda x: x.organization, organization_field="organization"):
     def deco(cls):
         class Admin(cls):
-            list_filter = (AdminAdvisorListFilter,)
-
             def has_module_permission(self, request):
                 return True
 
@@ -71,7 +69,7 @@ def with_organization_permissions(get_organization=lambda x: x.organization, org
                 return qs.filter(
                     Q(**{f"{organization_field}__admins": request.user})
                     | Q(**{f"{organization_field}__advisors": request.user})
-                ).distinct()
+                )
 
             def get_form(self, request, obj=None, change=False, **kwargs):
                 if not request.user.is_superuser:
@@ -285,6 +283,7 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
         class Meta:
             fields = ("organization", "name", "description", "start", "end", "points", "submission_type")
 
+    list_filter = (AdminAdvisorListFilter,)
     date_hierarchy = "start"
     list_display = ("name", "organization", "start", "end", "points", "user_count")
     search_fields = ("name",)
@@ -305,7 +304,7 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
 @admin.register(Submission)
 @with_organization_permissions(lambda x: x.event.organization, "event__organization")
 class SubmissionAdmin(admin.ModelAdmin, DynamicArrayMixin):
-    model = Submission
+    # list_filter = (AdminAdvisorListFilter,)
     search_fields = ("event__name", "user__first_name", "user__last_name")
     list_display = ("user", "event", "file")
 
@@ -322,6 +321,7 @@ class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
         class Meta:
             fields = ("organization", "title", "content", "published")
 
+    list_filter = (AdminAdvisorListFilter,)
     date_hierarchy = "date"
     list_display = ("title", "date", "organization", "published")
     list_filter = ("organization", "published")
@@ -337,7 +337,7 @@ class PrizeAdmin(admin.ModelAdmin, DynamicArrayMixin):
             fields = ("organization", "name", "description", "points")
 
     list_display = ("name", "description", "organization", "points")
-    list_filter = ("organization",)
+    list_filter = (AdminAdvisorListFilter,)
 
 
 @admin.register(Period)

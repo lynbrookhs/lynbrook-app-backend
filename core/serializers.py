@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
-from rest_framework import serializers
 from django.db.models import Count
+from rest_framework import serializers
 
 from . import models
 
@@ -242,11 +242,6 @@ class CreateSubmissionSerializer(serializers.ModelSerializer):
 
         if submission_type != event.submission_type:
             raise self.WrongSubmissionType
-
-        membership, _ = models.Membership.objects.get_or_create(user=user, organization=event.organization)
-        membership.points += event.points
-        membership.active = True
-        membership.save()
 
         return self.Meta.model.objects.create(event=event, user=user, file=file)
 
