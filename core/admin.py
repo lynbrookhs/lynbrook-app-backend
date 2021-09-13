@@ -56,9 +56,6 @@ def with_organization_permissions(get_organization=lambda x: x.organization, org
             def has_change_permission(self, request, obj=None):
                 return self.has_view_permission(request, obj)
 
-            def has_add_permission(self, request):
-                return True
-
             def has_delete_permission(self, request, obj=None):
                 return self.has_change_permission(request, obj)
 
@@ -143,6 +140,9 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
     search_fields = ("email", "first_name", "last_name")
     ordering = None
     inlines = (AdvisorOrganizationAdmin, AdminOrganizationAdmin, MembershipAdmin, ExpoPushTokenAdmin)
+
+    def has_view_permission(self, request, obj=None):
+        return True
 
 
 @admin.register(Organization)
@@ -311,6 +311,9 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
             """
         )
 
+    def has_add_permission(self, request):
+        return True
+
 
 @admin.register(Submission)
 @with_organization_permissions(lambda x: x.event.organization, "event__organization")
@@ -339,6 +342,9 @@ class PostAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_editable = ("published",)
     inlines = (InlinePollAdmin,)
 
+    def has_add_permission(self, request):
+        return True
+
 
 @admin.register(Prize)
 @with_organization_permissions()
@@ -349,6 +355,9 @@ class PrizeAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     list_display = ("name", "description", "organization", "points")
     list_filter = (AdminAdvisorListFilter,)
+
+    def has_add_permission(self, request):
+        return True
 
 
 @admin.register(Period)
