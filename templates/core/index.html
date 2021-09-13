@@ -118,11 +118,11 @@
 
     {% else %}
     <p class="content">
-      Welcome to the club sign in page! Please sign with your FUHSD Google
+      Welcome to the club sign in page! Please sign in with your FUHSD Google
       Account to continue.
     </p>
     <div class="has-text-centered">
-      <a href="{% url 'social:begin' 'google' %}?next=/" class="button is-link">Sign in With Google</a>
+      <a href="{% url 'social:begin' 'google' %}?next=/" class="button is-link">Authenticate With Google</a>
     </div>
     {% endif %}
 
