@@ -6,55 +6,114 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Lynbrook ASB</title>
+  <title>Sign In • Lynbrook ASB</title>
 
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css" />
+  <script src="https://kit.fontawesome.com/d80ce6916d.js" crossorigin="anonymous"></script>
+  <script src="//unpkg.com/alpinejs" defer></script>
 
-  <style>
-    body {
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 0.5rem;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-        Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
-        "Segoe UI Symbol";
-      line-height: 150%;
-      text-align: center;
+  <script>
+    async function _submit() {
+      const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      const resp = await fetch("/api/users/me/events/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrftoken
+        },
+        body: JSON.stringify({
+          code: parseInt(this.code)
+        }),
+        credentials: "same-origin"
+      });
+
+      if (resp.ok) {
+        this.event = await resp.json();
+      } else if (resp.status === 404) {
+        this.error = "No event corresponding with this code was found."
+      } else if (resp.status === 409) {
+        this.error = "You have already claimed points for this event."
+      } else {
+        this.error = "An unknown error occurred."
+      }
+
+      this.success = resp.ok;
     }
 
-    a {
-      color: hsl(217, 71%, 53%);
-      text-decoration: none;
+    async function submit() {
+      this.loading = true;
+      try {
+        _submit.bind(this)()
+      } catch (e) {}
+      this.loading = false;
     }
-
-    a:visited {
-      color: hsl(217, 71%, 53%);
-    }
-
-    a:hover {
-      text-decoration: underline;
-    }
-
-    p {
-      margin: 0;
-    }
-
-    #logo {
-      margin-bottom: 1rem;
-    }
-  </style>
+  </script>
 </head>
 
 <body>
-  <img src="https://i.imgur.com/n2GazsY.png" height="81" id="logo" />
-  <p>
-    Did you mean to visit
-    <a href="https://lynbrookasb.com/">lynbrookasb.com</a>?
-  </p>
-  <p>Or perhaps the <a href="/admin/">Admin Page</a>?</p>
+  <main class="section">
+    <div class="container" style="max-width: 500px;">
+      <h1 class="title is-3 has-text-centered">Lynbrook ASB/Clubs Sign In</h1>
+
+      {% if user.is_authenticated %}
+
+      <div x-data="{ code: '', loading: false, success: null, error: 'An unknown error occurred.' }">
+        <template x-if="loading">
+          <div class="has-text-centered">
+            <i class="fas fa-circle-notch fa-spin fa-3x"></i>
+          </div>
+        </template>
+
+        <template x-if="!loading">
+          <div>
+            <template x-if="success === null">
+              <form @submit.prevent="submit">
+                <div class="field">
+                  <label class="label">Code</label>
+                  <div class="control">
+                    <input class="input" type="number" min="100000" max="999999" placeholder="Enter Code"
+                      x-model="code">
+                  </div>
+                </div>
+                {% csrf_token %}
+              </form>
+            </template>
+
+            <template x-if="success === true">
+              <div class="has-text-centered">
+                <i class="fas fa-check-circle fa-3x mb-2"></i>
+                <h3 x-text="`Signed Into ${event.name}`" class="title is-5 mb-2"></h3>
+                <p x-text="`You claimed ${event.points} ${event.organization.name} points.`" class="content"></p>
+              </div>
+            </template>
+            <template x-if="success === false">
+              <div class="has-text-centered">
+                <i class="fas fa-times-circle fa-3x mb-2"></i>
+                <p x-text="error" class="content"></p>
+              </div>
+            </template>
+        </template>
+      </div>
+    </div>
+
+    {% else %}
+    <p class="content">
+      Welcome to the club sign in page! Please sign with your FUHSD Google
+      Account to continue.
+    </p>
+    <div class="has-text-centered">
+      <a href="{% url 'social:begin' 'google' %}?next=/" class="button is-link">Sign in With Google</a>
+    </div>
+    {% endif %}
+
+    <hr />
+
+    <p class="content has-text-grey is-size-7 has-text-centered">
+      <a href="https://linktr.ee/lynbrookapp">Download the Lynbrook App</a>
+      on your mobile device for an easy, one-tap sign in process.
+    </p>
+    </div>
+  </main>
 </body>
 
 </html>

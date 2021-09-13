@@ -69,7 +69,7 @@ def with_organization_permissions(get_organization=lambda x: x.organization, org
                 return qs.filter(
                     Q(**{f"{organization_field}__admins": request.user})
                     | Q(**{f"{organization_field}__advisors": request.user})
-                )
+                ).distinct()
 
             def get_form(self, request, obj=None, change=False, **kwargs):
                 if not request.user.is_superuser:
@@ -287,7 +287,7 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     date_hierarchy = "start"
     list_display = ("name", "organization", "start", "end", "points", "user_count")
     search_fields = ("name",)
-    readonly_fields = ("code", "qr_code")
+    readonly_fields = ("code", "qr_code", "sign_in")
 
     def user_count(self, obj):
         return obj.users.count()
@@ -299,6 +299,17 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
         qr_svg = qrcode.make(f"lhs://{obj.code}", image_factory=SvgPathFillImage, box_size=50, border=0)
         uri_svg = DataURI.make("image/svg+xml", charset="UTF-8", base64=True, data=qr_svg.to_string())
         return mark_safe(f'<img src="{uri_svg}" alt="lhs://{obj.code}">')
+
+    @admin.display(description="Sign In Instructions")
+    def sign_in(self, obj):
+        return mark_safe(
+            """
+            <p>Members can sign in in one of the following ways:</p>
+            <p>• Scanning the QR Code in the Lynbrook App</li></p>
+            <p>• Entering the 6-digit code manually in the Lynbrook App</li></p>
+            <p>• Entering the 6-digit code in the web form at <a href="https://lynbrookasb.org/">https://lynbrookasb.org/</a></li></p>
+            """
+        )
 
 
 @admin.register(Submission)

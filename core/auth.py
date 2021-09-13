@@ -21,7 +21,7 @@ class GoogleOAuth(GoogleOAuth2):
         }
 
     def auth_url(self):
-        return super().auth_url() + "&hd=fuhsd.org"
+        return super().auth_url() + "&hd=student.fuhsd.org"
 
 
 class SchoologyOAuth(BaseOAuth1):
