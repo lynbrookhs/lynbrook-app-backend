@@ -69,26 +69,46 @@
             <template x-if="success === null">
               <form @submit.prevent="submit">
                 <div class="field">
-                  <label class="label">Code</label>
-                  <div class="control">
-                    <input class="input" type="number" min="100000" max="999999" placeholder="Enter Code"
-                      x-model="code">
+                  <label class="label">User</label>
+                  <div class="control has-icons-left">
+                    <input class="input" type="text" value="{{ user }}" readonly>
+                    <span class="icon is-small is-left">
+                      <i class="fas fa-user"></i>
+                    </span>
                   </div>
                 </div>
+
+                <div class="field">
+                  <label class="label">Code</label>
+                  <div class="control">
+                    <input class="input" type="number" min="100000" max="999999" placeholder="Enter Code" x-model="code"
+                      required>
+                  </div>
+                </div>
+
+                <div class="field is-grouped">
+                  <div class="control">
+                    <button class="button is-link">Sign In</button>
+                  </div>
+                  <div class="control">
+                    <a href="{% url 'admin:logout' %}?next=/" class="button is-danger is-light">Sign Out</a>
+                  </div>
+                </div>
+
                 {% csrf_token %}
               </form>
             </template>
 
             <template x-if="success === true">
               <div class="has-text-centered">
-                <i class="fas fa-check-circle fa-3x mb-2"></i>
+                <i class="fas fa-check-circle fa-3x mb-4 has-text-success"></i>
                 <h3 x-text="`Signed Into ${event.name}`" class="title is-5 mb-2"></h3>
                 <p x-text="`You claimed ${event.points} ${event.organization.name} points.`" class="content"></p>
               </div>
             </template>
             <template x-if="success === false">
               <div class="has-text-centered">
-                <i class="fas fa-times-circle fa-3x mb-2"></i>
+                <i class="fas fa-times-circle fa-3x mb-2 has-text-danger"></i>
                 <p x-text="error" class="content"></p>
               </div>
             </template>
