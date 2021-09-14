@@ -364,7 +364,10 @@ class SubmissionAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_filter = (EventListFilter,)
     search_fields = ("event__name", "user__first_name", "user__last_name")
     readonly_fields = ("created_at",)
-    list_display = ("user", "event", "file", "created_at")
+    list_display = ("user", "event", "organization", "file", "created_at")
+
+    def organization(self, obj):
+        return obj.event.organization
 
 
 @admin.register(Post)
