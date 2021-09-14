@@ -107,6 +107,26 @@ class AdminAdvisorListFilter(admin.SimpleListFilter):
         return queryset.filter(organization=self.value())
 
 
+class EventListFilter(admin.SimpleListFilter):
+    title = _("event")
+
+    parameter_name = "event"
+
+    def lookups(self, request, model_admin):
+        if request.user.is_superuser:
+            events = Event.objects.all()
+        else:
+            events = Event.objects.filter(
+                Q(organization__admins=request.user) | Q(organization__advisors=request.user)
+            ).distinct()
+        return [(event.id, event.name) for event in events]
+
+    def queryset(self, request, queryset):
+        if not self.value():
+            return queryset
+        return queryset.filter(event=self.value())
+
+
 @admin.register(User)
 class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
     class AdvisorOrganizationAdmin(admin.TabularInline, DynamicArrayMixin):
@@ -316,11 +336,34 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 
 @admin.register(Submission)
-@with_organization_permissions(lambda x: x.event.organization, "event__organization")
 class SubmissionAdmin(admin.ModelAdmin, DynamicArrayMixin):
-    # list_filter = (AdminAdvisorListFilter,)
+    def has_module_permission(self, request):
+        return True
+
+    def has_view_permission(self, request, obj=None):
+        if obj is None or request.user.is_superuser:
+            return True
+        org = obj.event.organization
+        return org.is_admin(request.user) or org.is_advisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return self.has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self.has_change_permission(request, obj)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        events = Event.objects.filter(
+            Q(**{f"organization__admins": request.user}) | Q(**{f"organization__advisors": request.user})
+        )
+        return qs.filter(event__in=events)
+
+    list_filter = (EventListFilter,)
     search_fields = ("event__name", "user__first_name", "user__last_name")
-    list_display = ("user", "event", "file")
+    list_display = ("user", "event", "file", "created_at")
 
 
 @admin.register(Post)

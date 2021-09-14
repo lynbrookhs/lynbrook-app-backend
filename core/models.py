@@ -237,6 +237,7 @@ class Submission(Model):
 
     user = ForeignKey(User, on_delete=CASCADE, related_name="+")
     event = ForeignKey(Event, on_delete=CASCADE, related_name="submissions")
+    created_at = DateTimeField(auto_now_add=True)
     file = FileField(null=True, blank=True)
 
     def __str__(self):
