@@ -363,6 +363,7 @@ class SubmissionAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     list_filter = (EventListFilter,)
     search_fields = ("event__name", "user__first_name", "user__last_name")
+    readonly_fields = ("created_at",)
     list_display = ("user", "event", "file", "created_at")
 
 
