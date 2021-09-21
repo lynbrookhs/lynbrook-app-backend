@@ -325,9 +325,9 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
         return mark_safe(
             """
             <p>Members can sign in in one of the following ways:</p>
-            <p>• Scanning the QR Code in the Lynbrook App</li></p>
-            <p>• Entering the 6-digit code manually in the Lynbrook App</li></p>
-            <p>• Entering the 6-digit code in the web form at <a href="https://lynbrookasb.org/">https://lynbrookasb.org/</a></li></p>
+            <p>• Scanning the QR Code in the Monta Vista App</li></p>
+            <p>• Entering the 6-digit code manually in the Monta Vista App</li></p>
+            <p>• Entering the 6-digit code in the web form at <a href="https://mvhs.lynbrookasb.org/">https://mvhs.lynbrookasb.org/</a></li></p>
             """
         )
 

@@ -29,7 +29,7 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "t", "1")
 
-ALLOWED_HOSTS = ["*"] if DEBUG else ["lynbrookasb.org", "www.lynbrookasb.org"]
+ALLOWED_HOSTS = ["*"] if DEBUG else ["mvhs.lynbrookasb.org"]
 
 
 # Application definition
