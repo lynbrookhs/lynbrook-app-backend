@@ -18,6 +18,10 @@ class IndexView(TemplateView):
     template_name = "core/index.html"
 
 
+class HomecomingView(TemplateView):
+    template_name = "homecoming/index.html"
+
+
 class SmallPages(pagination.PageNumberPagination):
     page_size = 20
 

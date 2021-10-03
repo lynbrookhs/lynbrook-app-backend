@@ -22,5 +22,6 @@ urlpatterns = [
     path("api/schedules/next/", views.NextScheduleView.as_view()),
     path("api/app_version/", views.AppVersionView.as_view()),
     path("api/", include(router.urls)),
+    path("homecoming/", views.HomecomingView.as_view()),
     path("", views.IndexView.as_view()),
 ]
