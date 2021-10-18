@@ -41,7 +41,7 @@ def with_inline_organization_permissions(get_organization=lambda x: x):
     return deco
 
 
-def with_organization_permissions(get_organization=lambda x: x.organization, organization_field="organization"):
+def with_organization_permissions():
     def deco(cls):
         class Admin(cls):
             def has_module_permission(self, request):
@@ -50,8 +50,7 @@ def with_organization_permissions(get_organization=lambda x: x.organization, org
             def has_view_permission(self, request, obj=None):
                 if obj is None or request.user.is_superuser:
                     return True
-                org = get_organization(obj)
-                return org.is_admin(request.user) or org.is_advisor(request.user)
+                return obj.organization.is_admin(request.user) or obj.organization.is_advisor(request.user)
 
             def has_change_permission(self, request, obj=None):
                 return self.has_view_permission(request, obj)
@@ -64,8 +63,7 @@ def with_organization_permissions(get_organization=lambda x: x.organization, org
                 if request.user.is_superuser:
                     return qs
                 return qs.filter(
-                    Q(**{f"{organization_field}__admins": request.user})
-                    | Q(**{f"{organization_field}__advisors": request.user})
+                    Q(**{f"organization__admins": request.user}) | Q(**{f"organization__advisors": request.user})
                 ).distinct()
 
             def get_form(self, request, obj=None, change=False, **kwargs):
@@ -119,7 +117,7 @@ class EventListFilter(admin.SimpleListFilter):
             events = Event.objects.filter(
                 Q(organization__admins=request.user) | Q(organization__advisors=request.user)
             ).distinct()
-        return [(event.id, event.name) for event in events]
+        return [(event.id, event) for event in events]
 
     def queryset(self, request, queryset):
         if not self.value():
@@ -254,7 +252,11 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             org = self.get_org_with_points(request, object_id)
         except self.model.DoesNotExist:
             return self._get_obj_does_not_exist_redirect(request, self.model._meta, object_id)
-        events = [(e, set(x.user_id for x in e.submissions.all())) for e in org.events.all()]
+
+        events = [
+            (e, {x.user_id: e.points if x.points is None else x.points for x in e.submissions.all()})
+            for e in org.events.all()
+        ]
         context = dict(
             org=org,
             events=[event.name for event, _ in events],
@@ -262,11 +264,12 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                 dict(
                     **membership.user.to_json(),
                     points=membership.points,
-                    events=[event.points if membership.user.id in users else None for event, users in events],
+                    events=[users.get(membership.user.id) for event, users in events],
                 )
                 for membership in org.memberships.all()
             ],
         )
+
         return render(request, "core/organization_points.html", context)
 
     def points_csv_view(self, request, object_id):
@@ -275,8 +278,10 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         except self.model.DoesNotExist:
             raise Http404
 
-        events = [(e, set(x.user_id for x in e.submissions.all())) for e in org.events.all()]
-
+        events = [
+            (e, {x.user_id: e.points if x.points is None else x.points for x in e.submissions.all()})
+            for e in org.events.all()
+        ]
         response = HttpResponse(
             content_type="text/csv", headers={"Content-Disposition": 'attachment; filename="points.csv"'}
         )
@@ -290,7 +295,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                 dict(
                     **membership.user.to_json(),
                     points=membership.points,
-                    **{event.name: event.points for event, users in events if membership.user.id in users},
+                    **{event.name: users.get(membership.user.id) for event, users in events},
                 )
             )
         return response
@@ -337,20 +342,9 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 @admin.register(Submission)
 class SubmissionAdmin(admin.ModelAdmin, DynamicArrayMixin):
-    def has_module_permission(self, request):
-        return True
-
-    def has_view_permission(self, request, obj=None):
-        if obj is None or request.user.is_superuser:
-            return True
-        org = obj.event.organization
-        return org.is_admin(request.user) or org.is_advisor(request.user)
-
-    def has_change_permission(self, request, obj=None):
-        return self.has_view_permission(request, obj)
-
-    def has_delete_permission(self, request, obj=None):
-        return self.has_change_permission(request, obj)
+    class AdminAdvisorForm(forms.ModelForm):
+        class Meta:
+            fields = ("event", "user", "points")
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -364,10 +358,51 @@ class SubmissionAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_filter = (EventListFilter,)
     search_fields = ("event__name", "user__first_name", "user__last_name")
     readonly_fields = ("created_at",)
-    list_display = ("user", "event", "organization", "file", "created_at")
+    list_display = ("user", "event", "points", "file", "created_at")
 
     def organization(self, obj):
         return obj.event.organization
+
+    def has_module_permission(self, request):
+        return True
+
+    def has_view_permission(self, request, obj=None):
+        if obj is None or request.user.is_superuser:
+            return True
+        return obj.event.organization.is_admin(request.user) or obj.event.organization.is_advisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return self.has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self.has_change_permission(request, obj)
+
+    def has_add_permission(self, request):
+        return True
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(
+            Q(**{f"event__organization__admins": request.user}) | Q(**{f"event__organization__advisors": request.user})
+        ).distinct()
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        if not request.user.is_superuser:
+            form_class = self.AdminAdvisorForm
+
+            class UserForm(form_class):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    q = Q(organization__admins=request.user) | Q(organization__advisors=request.user)
+                    self.fields["event"].queryset = (
+                        self.fields["event"].queryset.filter(q).order_by("-start").distinct()
+                    )
+
+            kwargs["form"] = UserForm
+
+        return super().get_form(request, obj=obj, **kwargs)
 
 
 @admin.register(Post)

@@ -228,7 +228,7 @@ class Event(Model):
     users = ManyToManyField(USER_MODEL, blank=True, through="Submission", related_name="events")
 
     def __str__(self):
-        return self.name
+        return f"{self.organization.name} • {self.name}"
 
 
 class Submission(Model):
@@ -237,11 +237,19 @@ class Submission(Model):
 
     user = ForeignKey(User, on_delete=CASCADE, related_name="+")
     event = ForeignKey(Event, on_delete=CASCADE, related_name="submissions")
+    points = PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Only set if the number of points needs to be overriden for this user. If blank, defaults to the number of points the event is worth.",
+    )
     created_at = DateTimeField(auto_now_add=True)
     file = FileField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.event} — {self.user}"
+
+    def get_points(self):
+        return self.event.points if self.points is None else self.points
 
 
 class Post(Model):
@@ -374,17 +382,26 @@ def add_required_users(*, instance, **kwargs):
     instance.users.add(*users)
 
 
+@receiver(pre_save, sender=Submission)
+def before_add_points(*, instance, **kwargs):
+    try:
+        instance._pre_save_instance = Submission.objects.get(pk=instance.pk)
+    except Submission.DoesNotExist:
+        instance._pre_save_instance = None
+
+
 @receiver(post_save, sender=Submission)
 def add_points(*, instance, created, **kwargs):
-    if created:
-        membership, _ = Membership.objects.get_or_create(user=instance.user, organization=instance.event.organization)
-        membership.points += instance.event.points
-        membership.active = True
-        membership.save()
+    membership, _ = Membership.objects.get_or_create(user=instance.user, organization=instance.event.organization)
+    membership.active = True
+    if instance._pre_save_instance:
+        membership.points -= instance._pre_save_instance.get_points()
+    membership.points += instance.get_points()
+    membership.save()
 
 
 @receiver(post_delete, sender=Submission)
-def add_points(*, instance, **kwargs):
+def remove_points(*, instance, **kwargs):
     membership, _ = Membership.objects.get_or_create(user=instance.user, organization=instance.event.organization)
-    membership.points -= instance.event.points
+    membership.points -= instance.get_points()
     membership.save()
