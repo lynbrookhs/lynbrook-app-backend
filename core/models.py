@@ -398,6 +398,11 @@ def add_all_points(*, instance, created, **kwargs):
         Membership.objects.filter(organization=instance.organization).update(points=F("points") + diff)
 
 
+@receiver(post_delete, sender=Event)
+def delete_all_points(*, instance, created, **kwargs):
+    Membership.objects.filter(organization=instance.organization).update(points=F("points") - instance.points)
+
+
 @receiver(pre_save, sender=Submission)
 def before_add_points(*, instance, **kwargs):
     try:
