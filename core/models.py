@@ -387,7 +387,7 @@ def add_required_users(*, instance, **kwargs):
 def before_add_all_points_(*, instance, **kwargs):
     try:
         instance._pre_save_instance = Event.objects.get(pk=instance.pk)
-    except Submission.DoesNotExist:
+    except Event.DoesNotExist:
         instance._pre_save_instance = None
 
 
