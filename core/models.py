@@ -8,6 +8,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db.models import *
+from django.db.models import F
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 from django.utils.translation import gettext as _
@@ -380,6 +381,21 @@ def add_required_users(*, instance, **kwargs):
         return
 
     instance.users.add(*users)
+
+
+@receiver(pre_save, sender=Event)
+def before_add_all_points_(*, instance, **kwargs):
+    try:
+        instance._pre_save_instance = Event.objects.get(pk=instance.pk)
+    except Submission.DoesNotExist:
+        instance._pre_save_instance = None
+
+
+@receiver(post_save, sender=Event)
+def add_all_points(*, instance, created, **kwargs):
+    if instance._pre_save_instance:
+        diff = instance.points - instance._pre_save_instance.points
+        Membership.objects.filter(organization=instance.organization).update(points=F("points") + diff)
 
 
 @receiver(pre_save, sender=Submission)
