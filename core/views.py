@@ -165,6 +165,23 @@ class PostViewSet(viewsets.ReadOnlyModelViewSet):
         return models.Post.objects.filter(published=True, organization__users=self.request.user)
 
 
+class PollViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = serializers.PollSerializer
+
+    def get_queryset(self):
+        return models.Poll.objects.all()
+
+
+class PollSubmissionViewSet(viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin):
+    serializer_class = serializers.PollSubmissionSerializer
+
+    def get_queryset(self):
+        return models.PollSubmission.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
 class EventViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.EventSerializer
 
