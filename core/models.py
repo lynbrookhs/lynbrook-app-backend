@@ -301,6 +301,12 @@ class Poll(Model):
         return self.description
 
 
+class PollSubmission(Model):
+    poll = ForeignKey(Poll, on_delete=CASCADE, related_name="submissions")
+    user = ForeignKey(USER_MODEL, on_delete=CASCADE, related_name="+")
+    responses = ArrayField(TextField())
+
+
 class Prize(Model):
     class Meta:
         ordering = ("points",)

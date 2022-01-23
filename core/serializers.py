@@ -23,7 +23,23 @@ class NestedOrganizationSerializer(serializers.ModelSerializer):
 class NestedPollSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Poll
-        fields = ("id", "type", "description", "choices", "min_values", "max_values")
+        fields = ("id", "type", "description", "choices", "min_values", "max_values", "submission")
+
+    submission = serializers.SerializerMethodField()
+
+    def get_submission(self, poll):
+        request = self.context.get("request")
+        if request:
+            try:
+                return poll.submissions.get(id=request.user.id)
+            except models.PollSubmission.DoesNotExist:
+                return None
+
+
+class NestedPollResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.PollSubmission
+        fields = ("id", "poll", "user", "responses")
 
 
 class NestedMembershipSerializer(serializers.ModelSerializer):
