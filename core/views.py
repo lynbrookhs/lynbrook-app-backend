@@ -165,18 +165,16 @@ class PostViewSet(viewsets.ReadOnlyModelViewSet):
         return models.Post.objects.filter(published=True, organization__users=self.request.user)
 
 
-class PollViewSet(viewsets.ReadOnlyModelViewSet):
+class PollViewSet(NestedViewSetMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = serializers.PollSerializer
-
-    def get_queryset(self):
-        return models.Poll.objects.all()
+    queryset = models.Poll.objects.all()
 
 
-class PollSubmissionViewSet(viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin):
+class PollSubmissionViewSet(NestedViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin):
     serializer_class = serializers.PollSubmissionSerializer
 
     def get_queryset(self):
-        return models.PollSubmission.objects.filter(user=self.request.user)
+        return self.filter_queryset_by_parents_lookups(models.PollSubmission.objects.filter(user=self.request.user))
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

@@ -17,7 +17,7 @@ polls.register(
     "submissions",
     views.PollSubmissionViewSet,
     basename="post-poll-pollsubmission",
-    parents_query_lookups=["post", "poll"],
+    parents_query_lookups=["poll__post", "poll"],
 )
 
 router.register("orgs", views.OrganizationViewSet, basename="organization")
