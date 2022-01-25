@@ -398,15 +398,19 @@ def before_add_all_points_(*, instance, **kwargs):
 
 
 @receiver(post_save, sender=Event)
-def add_all_points(*, instance, **kwargs):
+def add_all_points(*, instance, created, **kwargs):
     if instance._pre_save_instance:
         diff = instance.points - instance._pre_save_instance.points
-        Membership.objects.filter(organization=instance.organization).update(points=F("points") + diff)
+        Membership.objects.filter(organization=instance.organization, user__in=instance.users.all()).update(
+            points=F("points") + diff
+        )
 
 
 @receiver(post_delete, sender=Event)
 def delete_all_points(*, instance, **kwargs):
-    Membership.objects.filter(organization=instance.organization).update(points=F("points") - instance.points)
+    Membership.objects.filter(organization=instance.organization, user__in=instance.users.all()).update(
+        points=F("points") - instance.points
+    )
 
 
 @receiver(pre_save, sender=Submission)
@@ -418,7 +422,7 @@ def before_add_points(*, instance, **kwargs):
 
 
 @receiver(post_save, sender=Submission)
-def add_points(*, instance, **kwargs):
+def add_points(*, instance, created, **kwargs):
     membership, _ = Membership.objects.get_or_create(user=instance.user, organization=instance.event.organization)
     membership.active = True
     if instance._pre_save_instance:
