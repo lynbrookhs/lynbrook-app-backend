@@ -359,6 +359,7 @@ class SubmissionAdmin(admin.ModelAdmin, DynamicArrayMixin):
     search_fields = ("event__name", "user__first_name", "user__last_name")
     list_display = ("user", "event", "points", "file")
     autocomplete_fields = ("user", "event")
+    ordering = ("event", "user")
 
     def organization(self, obj):
         return obj.event.organization
