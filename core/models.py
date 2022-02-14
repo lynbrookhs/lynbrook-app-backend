@@ -201,6 +201,7 @@ class Membership(Model):
     organization = ForeignKey(Organization, on_delete=CASCADE, related_name="memberships")
     active = BooleanField(default=True)
     points = PositiveIntegerField(default=0)
+    points_spent = PositiveIntegerField(default=0)
 
 
 class Event(Model):

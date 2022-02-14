@@ -1,3 +1,4 @@
+from pkgutil import read_code
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count
@@ -23,7 +24,7 @@ class NestedOrganizationSerializer(serializers.ModelSerializer):
 class NestedMembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Membership
-        fields = ("organization", "points")
+        fields = ("organization", "points", "points_spent")
 
     organization = NestedOrganizationSerializer(read_only=True)
 
@@ -144,10 +145,11 @@ class PollSerializer(serializers.ModelSerializer):
 class MembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Membership
-        fields = ("organization", "points")
+        fields = ("organization", "points", "points_spent")
 
     organization = OrganizationSerializer(read_only=True)
     points = serializers.IntegerField(read_only=True)
+    points_spent = serializers.IntegerField(read_only=True)
 
 
 class CreateMembershipSerializer(serializers.ModelSerializer):
