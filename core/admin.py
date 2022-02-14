@@ -74,9 +74,10 @@ def with_organization_permissions():
                         def __init__(self, *args, **kwargs):
                             super().__init__(*args, **kwargs)
                             q = Q(admins=request.user) | Q(advisors=request.user)
-                            self.fields["organization"].queryset = (
-                                self.fields["organization"].queryset.filter(q).distinct()
-                            )
+                            if "organization" in self.fields:
+                                self.fields["organization"].queryset = (
+                                    self.fields["organization"].queryset.filter(q).distinct()
+                                )
 
                     kwargs["form"] = UserForm
 
@@ -338,6 +339,19 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     def has_add_permission(self, request):
         return True
+
+
+@admin.register(Membership)
+@with_organization_permissions()
+class MembershipAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    class AdminAdvisorForm(forms.ModelForm):
+        class Meta:
+            fields = ("points_spent",)
+
+    list_filter = (AdminAdvisorListFilter,)
+    list_display = ("user", "organization", "points", "points_spent", "active")
+    search_fields = ("user",)
+    readonly_fields = ("organization", "user", "points", "active")
 
 
 @admin.register(Submission)
