@@ -350,7 +350,7 @@ class MembershipAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     list_filter = (AdminAdvisorListFilter,)
     list_display = ("user", "organization", "points", "points_spent", "active")
-    search_fields = ("user",)
+    search_fields = ("user__first_name", "user__last_name")
     readonly_fields = ("organization", "user", "points", "active")
 
 
