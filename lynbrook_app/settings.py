@@ -122,7 +122,7 @@ LANGUAGE_CODE = "en-us"
 
 TIME_ZONE = "America/Los_Angeles"
 
-TIME_INPUT_FORMATS= ['%H:%M',]# '14:30'
+TIME_INPUT_FORMATS= ["%H:%M"]
 
 USE_I18N = True
 
