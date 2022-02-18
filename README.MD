@@ -36,7 +36,7 @@ You can learn more about the django [here]("https://developer.mozilla.org/en-US/
 
 `docker-compose run web /code/manage.py migrate`
 #### Create test user
-`docker-compose run web /code/manage.py  createsuperuser  --email=saggins@sagg.in`
+`docker-compose run web /code/manage.py  createsuperuser  --email=your@email.here`
 ###
 
 ### Run server
