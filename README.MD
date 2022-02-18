@@ -25,21 +25,31 @@ GS_FILE_OVERWRITE = False
 ```
 
 ### Compile new Requirements.txt
-`bash poetry export -f requirements.txt --output requirements.txt `
+```bash
+poetry export -f requirements.txt --output requirements.txt
+```
 
 ### Django Stuff
 
 You can learn more about the django [here]("https://developer.mozilla.org/en-US/docs/Learn/Server-side/Django")
 
 #### Make Migrations
-`docker-compose run web /code/manage.py makemigrations`
+```
+docker-compose run web /code/manage.py makemigrations
+```
 
-`docker-compose run web /code/manage.py migrate`
+```
+docker-compose run web /code/manage.py migrate
+```
 #### Create test user
-`docker-compose run web /code/manage.py  createsuperuser  --email=your@email.here`
+```
+docker-compose run web /code/manage.py  createsuperuser  --email=your@email.here
+```
 ###
 
 ### Run server
-`docker-compose up`
+```
+docker-compose up
+```
 
 [You can also setup debugging using docker on vscode]("https://code.visualstudio.com/docs/containers/docker-compose")
