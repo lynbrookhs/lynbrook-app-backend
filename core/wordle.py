@@ -12980,8 +12980,11 @@ VALID_GUESSES = {
 }
 
 
+VALID_ANSWERS_TUPLE = tuple(VALID_ANSWERS)
+
+
 def random_answer():
-    return random.choice(VALID_ANSWERS)
+    return random.choice(VALID_ANSWERS_TUPLE)
 
 
 def evaluate_guess(word, guess):
