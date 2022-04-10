@@ -1,10 +1,9 @@
-from pkgutil import read_code
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count
 from rest_framework import serializers
 
-from . import models
+from . import models, wordle
 
 # Nested
 
@@ -276,3 +275,28 @@ class ScheduleSerializer(serializers.ModelSerializer):
         fields = ("id", "url", "name", "start", "end", "weekday", "periods", "priority")
 
     periods = NestedSchedulePeriodSerializer(many=True, read_only=True)
+
+
+class WordleEntrySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.WordleEntry
+        fields = ("user", "date", "guesses", "results")
+
+    user = serializers.PrimaryKeyRelatedField(read_only=True)
+    date = serializers.DateField(read_only=True)
+    results = serializers.SerializerMethodField(read_only=True)
+
+    def get_results(self, entry):
+        return [wordle.evaluate_guess(entry.word, guess) for guess in entry.guesses]
+
+
+class UpdateWordleEntrySerializer(WordleEntrySerializer):
+    class Meta:
+        model = models.WordleEntry
+        fields = ("user", "date", "guesses", "results")
+
+    def update(self, instance, validated_data):
+        validated_data["guesses"] = [*instance.guesses, *validated_data["guesses"]]
+        if instance.word in validated_data["guesses"]:
+            validated_data["solved"] = True
+        return super().update(instance, validated_data)

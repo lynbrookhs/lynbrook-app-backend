@@ -10,6 +10,8 @@ users.register("orgs", views.MembershipViewSet, basename="user-organization", pa
 users.register("events", views.SubmissionViewSetOld, basename="user-event", parents_query_lookups=["user"])
 users.register("submissions", views.SubmissionViewSet, basename="user-submission", parents_query_lookups=["user"])
 users.register("tokens", views.ExpoPushTokenViewSet, basename="user-token", parents_query_lookups=["user"])
+users.register("wordle_entries", views.WordleEntryViewSet, basename="user-wordle-entry", parents_query_lookups=["user"])
+
 
 posts = router.register("posts", views.PostViewSet, basename="post")
 polls = posts.register("polls", views.PollViewSet, basename="post-poll", parents_query_lookups=["post"])

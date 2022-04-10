@@ -123,6 +123,24 @@ class SubmissionViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, m
         return super().handle_exception(exc)
 
 
+class WordleEntryViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.UpdateModelMixin):
+    permission_classes = (NestedUserAccessPolicy,)
+    queryset = models.WordleEntry.objects.all()
+    lookup_field = "date"
+
+    def get_serializer_class(self):
+        if self.action == "update":
+            return serializers.UpdateWordleEntrySerializer
+        return serializers.WordleEntrySerializer
+
+    def get_object(self):
+        if self.kwargs.get("date") == "today":
+            queryset = self.filter_queryset(self.get_queryset())
+            obj, _ = queryset.get_or_create(user=self.get_user(), date=date.today())
+            return obj
+        return super().get_object()
+
+
 class SubmissionViewSetOld(SubmissionViewSet):
     def __tl(self, resp):
         resp.data = [x["event"] for x in resp.data]

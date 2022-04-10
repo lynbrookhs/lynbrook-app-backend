@@ -6,13 +6,16 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
+from django.core.validators import MinLengthValidator, MinValueValidator
 from django.db.models import *
 from django.db.models import F
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.models.fields import ArrayField
+
+from . import wordle
 
 USER_MODEL = settings.AUTH_USER_MODEL
 
@@ -359,6 +362,28 @@ class SchedulePeriod(Model):
 
     start = TimeField()
     end = TimeField()
+
+
+def validate_word(value):
+    if value not in wordle.VALID_ANSWERS:
+        raise ValidationError("Invalid word")
+
+
+def validate_guess(value):
+    if value not in wordle.VALID_GUESSES:
+        raise ValidationError("Invalid guess")
+
+
+class WordleEntry(Model):
+    class Meta:
+        verbose_name_plural = "Wordle entries"
+        constraints = [UniqueConstraint(name="%(app_label)s_%(class)s_user_date", fields=("user", "date"))]
+
+    user = ForeignKey(User, on_delete=CASCADE, related_name="wordle_entries")
+    date = DateField()
+    word = CharField(max_length=5, default=wordle.random_answer, validators=[validate_word])
+    guesses = ArrayField(CharField(max_length=5, validators=[validate_guess]), blank=True, default=list)
+    solved = BooleanField(default=False)
 
 
 @receiver(pre_save, sender=Event)

@@ -472,3 +472,9 @@ class ScheduleAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("name", "start", "end", "weekday", "priority")
     inlines = (InlinePeriodAdmin,)
     save_as = True
+
+
+@admin.register(WordleEntry)
+class WordleEntryAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    list_display = ("user", "date", "word", "guesses", "solved")
+    search_fields = ("user__first_name", "user__last_name")
