@@ -324,4 +324,11 @@ class UpdateWordleEntrySerializer(WordleEntrySerializer):
                 instance.user.wordle_streak = 1
             instance.user.save()
 
+            obj, _ = models.Submission.objects.get_or_create(event_id=386, user=instance.user)
+            if obj.points is None:
+                obj.points = 2
+            else:
+                obj.points += 2
+            obj.save()
+
         return super().update(instance, validated_data)
