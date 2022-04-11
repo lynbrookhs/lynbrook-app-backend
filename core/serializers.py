@@ -280,20 +280,29 @@ class ScheduleSerializer(serializers.ModelSerializer):
 class WordleEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = models.WordleEntry
-        fields = ("user", "date", "guesses", "results")
+        fields = ("user", "date", "guesses", "results", "state")
 
     user = serializers.PrimaryKeyRelatedField(read_only=True)
     date = serializers.DateField(read_only=True)
-    results = serializers.SerializerMethodField(read_only=True)
+    results = serializers.SerializerMethodField()
+    state = serializers.SerializerMethodField()
 
     def get_results(self, entry):
         return [wordle.evaluate_guess(entry.word, guess) for guess in entry.guesses]
+
+    def get_state(self, entry):
+        state = {}
+        for guess, result in zip(entry.guesses, self.get_results(entry)):
+            for letter, s in zip(guess, result):
+                if state.get(letter) is not True:
+                    state[letter] = s
+        return state
 
 
 class UpdateWordleEntrySerializer(WordleEntrySerializer):
     class Meta:
         model = models.WordleEntry
-        fields = ("user", "date", "guesses", "results")
+        fields = ("user", "date", "guesses", "results", "state")
 
     def update(self, instance, validated_data):
         validated_data["guesses"] = [*instance.guesses, *validated_data["guesses"]]
