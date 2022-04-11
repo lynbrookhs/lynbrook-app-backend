@@ -13000,6 +13000,8 @@ def evaluate_guess(word, guess):
             letters[i] = None
 
     for i, guessed_letter in enumerate(guess):
+        if results[i] is not None:
+            continue
         for j, letter in enumerate(letters):
             if guessed_letter == letter:
                 results[i] = False
