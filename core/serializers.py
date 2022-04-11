@@ -297,7 +297,7 @@ class WordleEntrySerializer(serializers.ModelSerializer):
         state = {}
         for guess, result in zip(entry.guesses, self.get_results(entry)):
             for letter, s in zip(guess, result):
-                if state.get(letter) is not True:
+                if (True, False, None).index(s) < (True, False, None, 0).index(state.get(letter, 0)):
                     state[letter] = s
         return state
 
