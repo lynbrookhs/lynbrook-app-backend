@@ -140,6 +140,11 @@ class WordleEntryViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, 
             return obj
         return super().get_object()
 
+    def handle_exception(self, exc):
+        if isinstance(exc, ValueError):
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        return super().handle_exception(exc)
+
 
 class SubmissionViewSetOld(SubmissionViewSet):
     def __tl(self, resp):

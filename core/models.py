@@ -110,6 +110,8 @@ class User(AbstractUser):
         default="https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png"
     )
 
+    wordle_streak = IntegerField(default=0)
+
     def __str__(self):
         if self.grad_year is None:
             return f"{self.first_name} {self.last_name} ({self.email})"

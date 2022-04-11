@@ -152,6 +152,7 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
         (None, {"fields": ("email", "password")}),
         (_("Personal info"), {"fields": ("first_name", "last_name", "type", "grad_year")}),
         (_("Permissions"), {"fields": ("is_active", "is_staff", "is_superuser")}),
+        (_("Other"), {"fields": ("wordle_streak",)}),
     )
     add_fieldsets = ((None, {"classes": ("wide",), "fields": ("email", "grad_year", "password1", "password2")}),)
     list_display = ("email", "first_name", "last_name", "is_staff")
@@ -172,7 +173,6 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         extra = 0
 
         def has_view_permission(self, request, obj=None):
-            print(obj)
             return super().has_view_permission(request, obj=obj)
 
     class AdvisorForm(forms.ModelForm):

@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count
@@ -11,7 +13,7 @@ from . import models, wordle
 class NestedUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = get_user_model()
-        fields = ("id", "first_name", "last_name", "type")
+        fields = ("id", "first_name", "last_name", "type", "wordle_streak")
 
 
 class NestedOrganizationSerializer(serializers.ModelSerializer):
@@ -68,6 +70,7 @@ class UserSerializer(serializers.ModelSerializer):
             "type",
             "picture_url",
             "grad_year",
+            "wordle_streak",
             "is_staff",
             "is_superuser",
             "memberships",
@@ -304,8 +307,21 @@ class UpdateWordleEntrySerializer(WordleEntrySerializer):
         model = models.WordleEntry
         fields = ("user", "date", "word", "guesses", "results", "state", "solved")
 
+    @transaction.atomic
     def update(self, instance, validated_data):
+        if instance.date != date.today():
+            raise ValueError("Can only update today's wordle")
+        if instance.solved:
+            raise ValueError("Already solved")
+
         validated_data["guesses"] = [*instance.guesses, *validated_data["guesses"]]
+
         if instance.word in validated_data["guesses"]:
             validated_data["solved"] = True
+            if self.Meta.model.objects.filter(date=date.today() - timedelta(days=1), solved=True).exists():
+                instance.user.wordle_streak += 1
+            else:
+                instance.user.wordle_streak = 1
+            instance.user.save()
+
         return super().update(instance, validated_data)
