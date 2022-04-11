@@ -477,4 +477,4 @@ class ScheduleAdmin(admin.ModelAdmin, DynamicArrayMixin):
 @admin.register(WordleEntry)
 class WordleEntryAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("user", "date", "word", "guesses", "solved")
-    search_fields = ("user__first_name", "user__last_name")
+    search_fields = ("user__first_name", "user__last_name", "word", "guesses")
