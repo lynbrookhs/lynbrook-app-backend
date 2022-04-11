@@ -280,7 +280,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
 class WordleEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = models.WordleEntry
-        fields = ("user", "date", "guesses", "results", "state")
+        fields = ("user", "date", "word", "guesses", "results", "state")
 
     user = serializers.PrimaryKeyRelatedField(read_only=True)
     date = serializers.DateField(read_only=True)
@@ -302,7 +302,7 @@ class WordleEntrySerializer(serializers.ModelSerializer):
 class UpdateWordleEntrySerializer(WordleEntrySerializer):
     class Meta:
         model = models.WordleEntry
-        fields = ("user", "date", "guesses", "results", "state")
+        fields = ("user", "date", "word", "guesses", "results", "state")
 
     def update(self, instance, validated_data):
         validated_data["guesses"] = [*instance.guesses, *validated_data["guesses"]]
