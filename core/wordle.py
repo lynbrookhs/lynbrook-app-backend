@@ -7,7 +7,7 @@ with open(root / "wordle_answers.txt") as f:
     VALID_ANSWERS = f.read().splitlines()
 
 with open(root / "wordle_guesses.txt") as f:
-    VALID_GUESSES = [*VALID_ANSWERS, f.read().splitlines()]
+    VALID_GUESSES = [*VALID_ANSWERS, *f.read().splitlines()]
 
 
 def random_answer():
