@@ -1,12 +1,13 @@
-import os
 import random
+from pathlib import Path
 
-PARENT = os.path.dirname(os.path.realpath(__file__))
+root = Path(__file__).parent
 
-with open(os.path.join(PARENT, "wordle_answers.txt"), "r") as fp:
-    VALID_ANSWERS = fp.read().strip().split("\n")
-with open(os.path.join(PARENT, "wordle_guesses.txt"), "r") as fp:
-    VALID_GUESSES = fp.read().strip().split("\n")
+with open(root / "wordle_answers.txt") as f:
+    VALID_ANSWERS = f.read().splitlines()
+
+with open(root / "wordle_guesses.txt") as f:
+    VALID_GUESSES = [*VALID_ANSWERS, f.read().splitlines()]
 
 
 def random_answer():
