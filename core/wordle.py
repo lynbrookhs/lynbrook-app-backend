@@ -33,5 +33,6 @@ def evaluate_guess(word, guess):
             if guessed_letter == letter:
                 results[i] = False
                 letters[j] = None
+                break
 
     return results
