@@ -7,7 +7,7 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
-from django.core.validators import MinLengthValidator, MinValueValidator
+from django.core.validators import MinValueValidator
 from django.db.models import *
 from django.db.models import F
 from django.db.models.signals import post_delete, post_save, pre_save
@@ -15,7 +15,7 @@ from django.dispatch import receiver
 from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.models.fields import ArrayField
 
-from . import wordle
+from core import wordle
 
 USER_MODEL = settings.AUTH_USER_MODEL
 
@@ -103,7 +103,7 @@ class User(AbstractUser):
     username = None
     email = LowercaseEmailField(_("email address"), unique=True)
     type = IntegerField(choices=UserType.choices)
-    grad_year = IntegerField(choices=[(x, x) for x in range(2022, 2026)], null=True, blank=True)
+    grad_year = IntegerField(choices=[(x, x) for x in range(2022, 2027)], null=True, blank=True)
 
     organizations = ManyToManyField("Organization", through="Membership", related_name="users")
     picture_url = URLField(
