@@ -1,5 +1,4 @@
 import csv
-import io
 
 import qrcode
 from datauri import DataURI
@@ -15,7 +14,7 @@ from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 from qrcode.image.svg import SvgPathFillImage
 
-from .models import *
+from core.models import *
 
 
 def with_inline_organization_permissions(get_organization=lambda x: x):
@@ -478,3 +477,9 @@ class ScheduleAdmin(admin.ModelAdmin, DynamicArrayMixin):
 class WordleEntryAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("user", "date", "word", "guesses", "solved")
     search_fields = ("user__first_name", "user__last_name", "word", "guesses")
+
+
+@admin.register(ExpoPushToken)
+class ExpoPushTokenAdmin(admin.ModelAdmin):
+    list_display = ("user", "token")
+    search_fields = ("user__first_name", "user__last_name", "token")

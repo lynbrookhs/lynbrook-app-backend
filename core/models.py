@@ -16,6 +16,7 @@ from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.models.fields import ArrayField
 
 from core import wordle
+from core.notifications import send_notifications
 
 USER_MODEL = settings.AUTH_USER_MODEL
 
@@ -386,6 +387,27 @@ class WordleEntry(Model):
     word = CharField(max_length=5, default=wordle.random_answer, validators=[validate_word])
     guesses = ArrayField(CharField(max_length=5, validators=[validate_guess]), blank=True, default=list)
     solved = BooleanField(default=False)
+
+
+@receiver(pre_save, sender=Post)
+def before_send_post_notifications(*, instance, **kwargs):
+    try:
+        instance._pre_save_instance = Post.objects.get(pk=instance.pk)
+    except Post.DoesNotExist:
+        instance._pre_save_instance = None
+
+
+@receiver(post_save, sender=Post)
+def send_post_notifications(*, instance, created, **kwargs):
+    if instance._pre_save_instance and instance._pre_save_instance.published:
+        return
+    if not instance.published:
+        return
+
+    tokens = instance.organization.memberships.filter(active=True).values("user__expo_push_tokens__token")
+    tokens = [token for x in tokens if (token := x["user__expo_push_tokens__token"])]
+
+    send_notifications(tokens, instance.title, instance.content[:300])
 
 
 @receiver(pre_save, sender=Event)
