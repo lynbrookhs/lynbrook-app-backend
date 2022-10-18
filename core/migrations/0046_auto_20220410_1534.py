@@ -21,6 +21,6 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='wordleentry',
             name='word',
-            field=models.CharField(default=core.wordle.random_answer, max_length=5, validators=[core.models.validate_word]),
+            field=models.CharField(default=core.wordle.random_answer, max_length=5),
         ),
     ]

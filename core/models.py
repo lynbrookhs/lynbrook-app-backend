@@ -367,15 +367,20 @@ class SchedulePeriod(Model):
     end = TimeField()
 
 
-def validate_word(value):
-    if value not in wordle.VALID_ANSWERS:
-        raise ValidationError("Invalid word")
-
-
 def validate_guess(value):
     if value not in wordle.VALID_GUESSES:
         raise ValidationError("Invalid guess")
 
+class WordleTheme(Model):
+    date = DateField()
+    word = CharField(max_length=5)
+
+def wordle_key():
+    try:
+        theme = WordleTheme.objects.get(date=date.today())
+        return theme.word
+    except WordleTheme.DoesNotExist:
+        return wordle.random_answer()
 
 class WordleEntry(Model):
     class Meta:
@@ -384,7 +389,7 @@ class WordleEntry(Model):
 
     user = ForeignKey(User, on_delete=CASCADE, related_name="wordle_entries")
     date = DateField()
-    word = CharField(max_length=5, default=wordle.random_answer, validators=[validate_word])
+    word = CharField(max_length=5, default=wordle_key)
     guesses = ArrayField(CharField(max_length=5, validators=[validate_guess]), blank=True, default=list)
     solved = BooleanField(default=False)
 
