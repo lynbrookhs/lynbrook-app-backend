@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import Count
 from rest_framework import serializers
 
-from . import models, wordle
+from core import models, wordle
 
 # Nested
 
@@ -312,7 +312,10 @@ class WordleEntrySerializer(serializers.ModelSerializer):
         return state
 
     def get_points(self, entry):
-        return self.POINTS[len(entry.guesses)]
+        if entry.solved:
+            return self.POINTS[len(entry.guesses)]
+        else:
+            return None
 
 
 class UpdateWordleEntrySerializer(WordleEntrySerializer):
