@@ -283,12 +283,22 @@ class ScheduleSerializer(serializers.ModelSerializer):
 class WordleEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = models.WordleEntry
-        fields = ("user", "date", "word", "guesses", "results", "state", "solved")
+        fields = ("user", "date", "word", "guesses", "results", "state", "solved", "points")
+
+    POINTS = {
+        1: 10,
+        2: 8,
+        3: 6,
+        4: 4,
+        5: 2,
+        6: 2,
+    }
 
     user = serializers.PrimaryKeyRelatedField(read_only=True)
     date = serializers.DateField(read_only=True)
     results = serializers.SerializerMethodField()
     state = serializers.SerializerMethodField()
+    points = serializers.SerializerMethodField(read_only=True)
 
     def get_results(self, entry):
         return [wordle.evaluate_guess(entry.word, guess) for guess in entry.guesses]
@@ -300,6 +310,9 @@ class WordleEntrySerializer(serializers.ModelSerializer):
                 if (True, False, None).index(s) < (True, False, None, -1).index(state.get(letter, -1)):
                     state[letter] = s
         return state
+
+    def get_points(self, entry):
+        return self.POINTS[len(entry.guesses)]
 
 
 class UpdateWordleEntrySerializer(WordleEntrySerializer):
@@ -324,11 +337,13 @@ class UpdateWordleEntrySerializer(WordleEntrySerializer):
                 instance.user.wordle_streak = 1
             instance.user.save()
 
+            points = WordleEntrySerializer.POINTS[len(instance.guesses) + 1]
+
             obj, _ = models.Submission.objects.get_or_create(event_id=386, user=instance.user)
             if obj.points is None:
-                obj.points = 2
+                obj.points = points
             else:
-                obj.points += 2
+                obj.points += points
             obj.save()
 
         return super().update(instance, validated_data)
