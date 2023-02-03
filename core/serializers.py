@@ -286,12 +286,12 @@ class WordleEntrySerializer(serializers.ModelSerializer):
         fields = ("user", "date", "word", "guesses", "results", "state", "solved", "points")
 
     POINTS = {
-        1: 10,
-        2: 8,
-        3: 6,
-        4: 4,
-        5: 2,
-        6: 2,
+        1: 2,
+        2: 2,
+        3: 2,
+        4: 1,
+        5: 1,
+        6: 1,
     }
 
     user = serializers.PrimaryKeyRelatedField(read_only=True)
