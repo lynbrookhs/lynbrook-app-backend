@@ -104,7 +104,7 @@ class User(AbstractUser):
     username = None
     email = LowercaseEmailField(_("email address"), unique=True)
     type = IntegerField(choices=UserType.choices)
-    grad_year = IntegerField(choices=[(x, x) for x in range(2022, 2027)], null=True, blank=True)
+    grad_year = IntegerField(choices=[(x, x) for x in range(2022, 2029)], null=True, blank=True)
 
     organizations = ManyToManyField("Organization", through="Membership", related_name="users")
     picture_url = URLField(
