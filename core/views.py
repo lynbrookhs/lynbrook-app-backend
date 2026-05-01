@@ -6,6 +6,7 @@ from django.db import IntegrityError
 from django.db.models import Q
 from django.views.generic.base import TemplateView
 from rest_framework import mixins, pagination, parsers, status, views, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework_extensions.mixins import NestedViewSetMixin
 
@@ -224,6 +225,19 @@ class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         return models.Prize.objects.filter(organization__users=self.request.user)
+
+    @action(detail=True, methods=["post"])
+    def redeem(self, request, *args, **kwargs):
+        prize = self.get_object()
+        serializer = serializers.RedeemPrizeSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.save(prize=prize)
+        return Response(data)
+
+    def handle_exception(self, exc):
+        if isinstance(exc, serializers.RedeemPrizeSerializer.NotEnoughPoints):
+            return Response(status=status.HTTP_409_CONFLICT)
+        return super().handle_exception(exc)
 
 
 class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):

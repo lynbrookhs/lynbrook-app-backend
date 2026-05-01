@@ -272,6 +272,39 @@ class PrizeSerializer(serializers.ModelSerializer):
     organization = NestedOrganizationSerializer(read_only=True)
 
 
+class RedeemPrizeSerializer(serializers.Serializer):
+    class NotEnoughPoints(Exception):
+        pass
+
+    quantity = serializers.IntegerField(required=False, min_value=1, default=1)
+
+    @transaction.atomic
+    def save(self, **kwargs):
+        prize = kwargs["prize"]
+        user = self.context["request"].user
+        quantity = self.validated_data["quantity"]
+        cost = prize.points * quantity
+
+        membership, _ = models.Membership.objects.select_for_update().get_or_create(
+            user=user,
+            organization=prize.organization,
+        )
+        if membership.points < cost:
+            raise self.NotEnoughPoints
+
+        membership.points -= cost
+        membership.points_spent += cost
+        membership.save(update_fields=("points", "points_spent"))
+
+        return {
+            "prize": prize.id,
+            "quantity": quantity,
+            "cost": cost,
+            "points": membership.points,
+            "points_spent": membership.points_spent,
+        }
+
+
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Schedule
