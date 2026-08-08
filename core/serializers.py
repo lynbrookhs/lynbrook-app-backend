@@ -289,12 +289,11 @@ class RedeemPrizeSerializer(serializers.Serializer):
             user=user,
             organization=prize.organization,
         )
-        if membership.points < cost:
+        if membership.points - membership.points_spent < cost:
             raise self.NotEnoughPoints
 
-        membership.points -= cost
         membership.points_spent += cost
-        membership.save(update_fields=("points", "points_spent"))
+        membership.save(update_fields=("points_spent",))
 
         return {
             "prize": prize.id,
