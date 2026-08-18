@@ -147,11 +147,19 @@ class PollSerializer(serializers.ModelSerializer):
 class MembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Membership
-        fields = ("organization", "points", "points_spent")
+        fields = ("organization", "points", "points_spent", "calendar_events", "receive_pings")
 
     organization = OrganizationSerializer(read_only=True)
     points = serializers.IntegerField(read_only=True)
     points_spent = serializers.IntegerField(read_only=True)
+    calendar_events = serializers.BooleanField(read_only=True)
+    receive_pings = serializers.BooleanField(read_only=True)
+
+
+class UpdateMembershipSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Membership
+        fields = ("calendar_events", "receive_pings")
 
 
 class CreateMembershipSerializer(serializers.ModelSerializer):
@@ -168,6 +176,19 @@ class CreateMembershipSerializer(serializers.ModelSerializer):
             obj.active = True
             obj.save()
         return obj
+
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.CalendarEvent
+        fields = ("id", "title", "start", "end", "all_day")
+
+    def validate(self, data):
+        start = data.get("start", getattr(self.instance, "start", None))
+        end = data.get("end", getattr(self.instance, "end", None))
+        if start and end and end < start:
+            raise serializers.ValidationError({"end": "End must not be before start."})
+        return data
 
 
 class ExpoPushTokenSerializer(serializers.ModelSerializer):

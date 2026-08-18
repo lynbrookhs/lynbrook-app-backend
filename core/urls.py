@@ -11,6 +11,9 @@ users.register("events", views.SubmissionViewSetOld, basename="user-event", pare
 users.register("submissions", views.SubmissionViewSet, basename="user-submission", parents_query_lookups=["user"])
 users.register("tokens", views.ExpoPushTokenViewSet, basename="user-token", parents_query_lookups=["user"])
 users.register("wordle_entries", views.WordleEntryViewSet, basename="user-wordle-entry", parents_query_lookups=["user"])
+users.register(
+    "calendar_events", views.CalendarEventViewSet, basename="user-calendar-event", parents_query_lookups=["user"]
+)
 
 
 posts = router.register("posts", views.PostViewSet, basename="post")

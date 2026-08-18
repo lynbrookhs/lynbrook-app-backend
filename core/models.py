@@ -208,6 +208,8 @@ class Membership(Model):
     active = BooleanField(default=True)
     points = PositiveIntegerField(default=0)
     points_spent = PositiveIntegerField(default=0)
+    calendar_events = BooleanField(default=True, help_text="Show this organization's meeting times in the user's calendar.")
+    receive_pings = BooleanField(default=True, help_text="Receive push notification pings from this organization's admins.")
 
 
 class Event(Model):
@@ -394,6 +396,33 @@ class WordleEntry(Model):
     solved = BooleanField(default=False)
 
 
+class Ping(Model):
+    class Meta:
+        ordering = ("-created_at",)
+
+    organization = ForeignKey(Organization, on_delete=CASCADE, related_name="pings")
+    message = CharField(max_length=150, help_text="Short message sent as a push notification to members' phones.")
+    sent_by = ForeignKey(USER_MODEL, on_delete=SET_NULL, null=True, blank=True, related_name="+")
+    created_at = DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.organization.name}: {self.message}"
+
+
+class CalendarEvent(Model):
+    class Meta:
+        ordering = ("start",)
+
+    user = ForeignKey(USER_MODEL, on_delete=CASCADE, related_name="calendar_events")
+    title = CharField(max_length=200)
+    start = DateTimeField()
+    end = DateTimeField()
+    all_day = BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.title} — {self.user}"
+
+
 @receiver(pre_save, sender=Post)
 def before_send_post_notifications(*, instance, **kwargs):
     try:
@@ -413,6 +442,19 @@ def send_post_notifications(*, instance, created, **kwargs):
     tokens = [token for x in tokens if (token := x["user__expo_push_tokens__token"])]
 
     send_notifications(tokens, instance.title, instance.content[:300])
+
+
+@receiver(post_save, sender=Ping)
+def send_ping_notifications(*, instance, created, **kwargs):
+    if not created:
+        return
+
+    tokens = instance.organization.memberships.filter(active=True, receive_pings=True).values(
+        "user__expo_push_tokens__token"
+    )
+    tokens = [token for x in tokens if (token := x["user__expo_push_tokens__token"])]
+
+    send_notifications(tokens, instance.organization.name, instance.message)
 
 
 @receiver(pre_save, sender=Event)

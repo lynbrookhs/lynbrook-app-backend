@@ -456,6 +456,48 @@ class PrizeAdmin(admin.ModelAdmin, DynamicArrayMixin):
         return True
 
 
+@admin.register(Ping)
+@with_organization_permissions()
+class PingAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    class AdminAdvisorForm(forms.ModelForm):
+        class Meta:
+            fields = ("organization", "message")
+
+    list_display = ("organization", "message", "sent_by", "created_at")
+    list_filter = (AdminAdvisorListFilter,)
+    readonly_fields = ("sent_by", "created_at", "instructions")
+
+    @admin.display(description="How pings work")
+    def instructions(self, obj):
+        return mark_safe(
+            """
+            <p>Saving a new ping immediately sends it as a push notification to every member of the
+            organization who has notifications enabled for it in the Lynbrook App.</p>
+            <p>Pings cannot be edited after they are sent.</p>
+            """
+        )
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj is None:
+            return ("sent_by", "created_at", "instructions")
+        return ("organization", "message", "sent_by", "created_at", "instructions")
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.sent_by = request.user
+        super().save_model(request, obj, form, change)
+
+    def has_add_permission(self, request):
+        return True
+
+
+@admin.register(CalendarEvent)
+class CalendarEventAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    list_display = ("title", "user", "start", "end", "all_day")
+    search_fields = ("title", "user__first_name", "user__last_name", "user__email")
+    autocomplete_fields = ("user",)
+
+
 @admin.register(Period)
 class PeriodAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("id", "name", "customizable")

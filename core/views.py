@@ -77,7 +77,11 @@ class ExpoPushTokenViewSet(
 
 
 class MembershipViewSet(
-    NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin
+    NestedUserViewSetMixin,
+    viewsets.ReadOnlyModelViewSet,
+    mixins.CreateModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
 ):
     permission_classes = (NestedUserAccessPolicy,)
     queryset = models.Membership.objects.filter(active=True)
@@ -86,6 +90,8 @@ class MembershipViewSet(
     def get_serializer_class(self):
         if self.action == "create":
             return serializers.CreateMembershipSerializer
+        if self.action in ("update", "partial_update"):
+            return serializers.UpdateMembershipSerializer
         return serializers.MembershipSerializer
 
     def perform_create(self, serializer):
@@ -122,6 +128,15 @@ class SubmissionViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, m
         if isinstance(exc, IntegrityError):
             return Response(status=status.HTTP_409_CONFLICT)
         return super().handle_exception(exc)
+
+
+class CalendarEventViewSet(NestedUserViewSetMixin, viewsets.ModelViewSet):
+    permission_classes = (NestedUserAccessPolicy,)
+    queryset = models.CalendarEvent.objects.all()
+    serializer_class = serializers.CalendarEventSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.get_user())
 
 
 class WordleEntryViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.UpdateModelMixin):
