@@ -208,8 +208,8 @@ class Membership(Model):
     active = BooleanField(default=True)
     points = PositiveIntegerField(default=0)
     points_spent = PositiveIntegerField(default=0)
-    calendar_events = BooleanField(default=True, help_text="Show this organization's meeting times in the user's calendar.")
-    receive_pings = BooleanField(default=True, help_text="Receive push notification pings from this organization's admins.")
+    calendar_events = BooleanField(default=False, help_text="Show this organization's meeting times in the user's calendar.")
+    receive_pings = BooleanField(default=False, help_text="Receive push notification pings from this organization's admins.")
 
 
 class Event(Model):
