@@ -6,7 +6,12 @@ logger = logging.getLogger(__name__)
 
 
 def send_notifications(tokens, title, body):
-    messages = [{"to": token, "title": title, "body": body} for token in tokens]
+    # sound: "default" makes iOS actually buzz/chime; without it the notification
+    # arrives silently in Notification Center.
+    messages = [
+        {"to": token, "title": title, "body": body, "sound": "default", "priority": "high"}
+        for token in tokens
+    ]
 
     # Chunk in 100s
     for i in range(0, len(messages), 100):
