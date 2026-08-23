@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from datetime import date, datetime, timedelta, timezone
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, logout
 from django.db import IntegrityError
 from django.db.models import Q
+from django.shortcuts import render
 from django.views.generic.base import TemplateView
 from rest_framework import mixins, pagination, parsers, status, views, viewsets
 from rest_framework.decorators import action
@@ -292,3 +293,22 @@ class AppVersionView(views.APIView):
 
     def get(self, r):
         return Response({"android": 26, "ios": "2.2.0"})
+
+
+def account_deletion_view(request):
+    """Self-service account deletion (Google Play / App Store requirement)."""
+    user = request.user
+
+    if request.method == "POST" and request.POST.get("confirm_delete") and user.is_authenticated:
+        if user.is_staff or user.is_superuser:
+            return render(request, "core/account_deletion.html", {"state": "blocked"})
+        email = user.email
+        logout(request)
+        user.delete()
+        return render(request, "core/account_deletion.html", {"state": "deleted", "deleted_email": email})
+
+    if user.is_authenticated:
+        state = "blocked" if (user.is_staff or user.is_superuser) else "ready"
+    else:
+        state = "anonymous"
+    return render(request, "core/account_deletion.html", {"state": state})

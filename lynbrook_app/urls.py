@@ -18,9 +18,12 @@ from django.urls import path
 from django.urls.conf import include
 from django.views.generic import TemplateView
 
+from core import views as core_views
+
 urlpatterns = [
     path("", include("core.urls")),
     path("auth/redirect/", TemplateView.as_view(template_name="core/auth_redirect.html")),
+    path("account-deletion/", core_views.account_deletion_view),
     path("admin/", admin.site.urls),
     path("accounts/", include("social_django.urls", namespace="social")),
     path("api/auth/", include("rest_framework.urls")),
