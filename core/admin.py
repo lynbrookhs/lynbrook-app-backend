@@ -306,7 +306,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     class AdminAdvisorForm(forms.ModelForm):
         class Meta:
-            fields = ("organization", "name", "description", "start", "end", "points", "submission_type")
+            fields = ("organization", "name", "description", "start", "end", "points", "submission_type", "link")
 
     list_filter = (AdminAdvisorListFilter,)
     date_hierarchy = "start"
