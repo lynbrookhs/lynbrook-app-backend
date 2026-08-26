@@ -61,7 +61,6 @@ class PollType(IntegerChoices):
 class EventSubmissionType(IntegerChoices):
     CODE = 1
     FILE = 2
-    LINK = 3
 
 
 class LowercaseEmailField(EmailField):
@@ -235,10 +234,6 @@ class Event(Model):
     points = PositiveIntegerField()
     submission_type = IntegerField(choices=EventSubmissionType.choices, default=EventSubmissionType.CODE)
     code = PositiveIntegerField(null=True, blank=True)
-    link = URLField(
-        blank=True,
-        help_text="Link events only. The home screen shows these like the Daily Wordle: tapping the arrow awards the points once, then opens this URL.",
-    )
 
     users = ManyToManyField(USER_MODEL, blank=True, through="Submission", related_name="events")
 

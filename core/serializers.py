@@ -215,7 +215,6 @@ class EventSerializer(serializers.ModelSerializer):
             "end",
             "points",
             "submission_type",
-            "link",
             "claimed",
             "leaderboard",
         )
@@ -273,22 +272,12 @@ class CreateSubmissionSerializer(serializers.ModelSerializer):
         has_code = code is not None
         has_event = event is not None
         has_file = file is not None
+        if not (has_code is not has_event is has_file):
+            raise serializers.ValidationError({"code": "Please provide code or both event_id and file."})
 
-        if has_code:
-            if has_event or has_file:
-                raise serializers.ValidationError({"code": "Please provide code on its own."})
+        submission_type = models.EventSubmissionType.CODE if has_code else models.EventSubmissionType.FILE
+        if submission_type is models.EventSubmissionType.CODE:
             event = models.Event.objects.get(code=code)
-            submission_type = models.EventSubmissionType.CODE
-        elif has_event and event.submission_type == models.EventSubmissionType.LINK:
-            if has_file:
-                raise serializers.ValidationError({"file": "Link events do not take a file."})
-            submission_type = models.EventSubmissionType.LINK
-        elif has_event and has_file:
-            submission_type = models.EventSubmissionType.FILE
-        else:
-            raise serializers.ValidationError(
-                {"code": "Please provide code, or event_id and file, or event_id for a link event."}
-            )
 
         if submission_type != event.submission_type:
             raise self.WrongSubmissionType
