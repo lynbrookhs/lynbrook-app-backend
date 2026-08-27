@@ -29,6 +29,11 @@
             justify-content: center;
         }
 
+        #csv {
+            position: absolute;
+            right: 16px;
+        }
+
         #hot {
             margin: 0;
             margin-top: 50px;
@@ -39,6 +44,7 @@
 <body>
     <div id="header">
         <h1>{{ org }} Points</h1>
+        <a id="csv" href="{% url 'admin:core_organization_points_csv' org.id %}">Download CSV</a>
     </div>
     <div id="hot"></div>
 

@@ -232,7 +232,9 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
     def get_urls(self):
         return [
-            path("<path:object_id>/points/csv/", self.points_csv_view, name="core_organization_points"),
+            # These shared a name, so reverse() only ever resolved the HTML view
+            # and the CSV export could not be linked to.
+            path("<path:object_id>/points/csv/", self.points_csv_view, name="core_organization_points_csv"),
             path("<path:object_id>/points/", self.points_view, name="core_organization_points"),
             *super().get_urls(),
         ]
