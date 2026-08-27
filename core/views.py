@@ -1,5 +1,4 @@
-from abc import ABC, abstractmethod
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
 
 from django.contrib.auth import get_user_model, logout
 from django.db import IntegrityError
@@ -254,38 +253,6 @@ class PrizeViewSet(viewsets.ReadOnlyModelViewSet):
         if isinstance(exc, serializers.RedeemPrizeSerializer.NotEnoughPoints):
             return Response(status=status.HTTP_409_CONFLICT)
         return super().handle_exception(exc)
-
-
-class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = models.Schedule.objects.all()
-    serializer_class = serializers.ScheduleSerializer
-
-
-class WeekScheduleView(ABC, views.APIView):
-    @abstractmethod
-    def start(self, request):
-        pass
-
-    def get(self, r):
-        start = self.start(r)
-        dates = [start + timedelta(days=x) for x in models.DayOfWeek]
-        weekdays = [
-            serializers.NestedScheduleSerializer(models.Schedule.get_for_day(x), context={"request": r, "date": x})
-            for x in dates
-        ]
-        return Response({"start": start, "end": start + timedelta(days=6), "weekdays": [x.data for x in weekdays]})
-
-
-class CurrentScheduleView(WeekScheduleView):
-    def start(self, request):
-        start = date.today() + timedelta(days=2)
-        return start - timedelta(days=start.weekday())
-
-
-class NextScheduleView(WeekScheduleView):
-    def start(self, request):
-        start = date.today() + timedelta(days=9)
-        return start - timedelta(days=start.weekday())
 
 
 class AppVersionView(views.APIView):

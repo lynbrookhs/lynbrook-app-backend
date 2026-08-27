@@ -30,32 +30,6 @@ class NestedMembershipSerializer(serializers.ModelSerializer):
     organization = NestedOrganizationSerializer(read_only=True)
 
 
-class NestedPeriodSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.Period
-        fields = ("id", "name", "customizable")
-
-
-class NestedSchedulePeriodSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.SchedulePeriod
-        fields = ("start", "end", "period")
-
-    period = NestedPeriodSerializer()
-
-
-class NestedScheduleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.Schedule
-        fields = ("id", "url", "name", "date", "periods")
-
-    periods = NestedSchedulePeriodSerializer(many=True, read_only=True)
-    date = serializers.SerializerMethodField(read_only=True)
-
-    def get_date(self, schedule):
-        return self.context.get("date")
-
-
 # Main
 
 
@@ -323,14 +297,6 @@ class RedeemPrizeSerializer(serializers.Serializer):
             "points": membership.points,
             "points_spent": membership.points_spent,
         }
-
-
-class ScheduleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = models.Schedule
-        fields = ("id", "url", "name", "start", "end", "weekday", "periods", "priority")
-
-    periods = NestedSchedulePeriodSerializer(many=True, read_only=True)
 
 
 class WordleEntrySerializer(serializers.ModelSerializer):

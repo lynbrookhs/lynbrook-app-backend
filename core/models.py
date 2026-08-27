@@ -330,45 +330,6 @@ class Prize(Model):
         return self.name
 
 
-class Schedule(Model):
-    class Meta:
-        ordering = ("-priority",)
-
-    name = CharField(max_length=200)
-    start = DateField()
-    end = DateField()
-    weekday = ArrayField(IntegerField(choices=DayOfWeek.choices))
-    priority = IntegerField()
-
-    @classmethod
-    def get_for_day(cls, day: date):
-        qs = cls.objects.filter(start__lte=day, end__gte=day, weekday__contains=[day.weekday()])
-        try:
-            return qs[0]
-        except IndexError:
-            return cls(name="No Schedule")
-
-
-class Period(Model):
-    id = CharField(max_length=200, primary_key=True)
-    name = CharField(max_length=200)
-    customizable = BooleanField()
-
-    def __str__(self):
-        return self.name
-
-
-class SchedulePeriod(Model):
-    class Meta:
-        ordering = ("start",)
-
-    schedule = ForeignKey(Schedule, on_delete=CASCADE, related_name="periods")
-    period = ForeignKey(Period, on_delete=CASCADE, related_name="+")
-
-    start = TimeField()
-    end = TimeField()
-
-
 def validate_guess(value):
     if value not in wordle.VALID_GUESSES:
         raise ValidationError("Invalid guess")

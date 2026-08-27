@@ -28,11 +28,8 @@ polls.register(
 router.register("orgs", views.OrganizationViewSet, basename="organization")
 router.register("events", views.EventViewSet, basename="event")
 router.register("prizes", views.PrizeViewSet, basename="prize")
-router.register("schedules", views.ScheduleViewSet, basename="schedule")
 
 urlpatterns = [
-    path("api/schedules/current/", views.CurrentScheduleView.as_view()),
-    path("api/schedules/next/", views.NextScheduleView.as_view()),
     path("api/app_version/", views.AppVersionView.as_view()),
     path("api/", include(router.urls)),
     path("", views.IndexView.as_view()),

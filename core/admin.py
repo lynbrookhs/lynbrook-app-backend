@@ -498,23 +498,6 @@ class CalendarEventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     autocomplete_fields = ("user",)
 
 
-@admin.register(Period)
-class PeriodAdmin(admin.ModelAdmin, DynamicArrayMixin):
-    list_display = ("id", "name", "customizable")
-    list_editable = ("customizable",)
-
-
-@admin.register(Schedule)
-class ScheduleAdmin(admin.ModelAdmin, DynamicArrayMixin):
-    class InlinePeriodAdmin(admin.TabularInline, DynamicArrayMixin):
-        model = SchedulePeriod
-        extra = 0
-
-    list_display = ("name", "start", "end", "weekday", "priority")
-    inlines = (InlinePeriodAdmin,)
-    save_as = True
-
-
 @admin.register(WordleEntry)
 class WordleEntryAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("user", "date", "word", "guesses", "solved")
