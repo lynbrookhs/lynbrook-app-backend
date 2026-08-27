@@ -493,9 +493,68 @@ class PingAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
 @admin.register(CalendarEvent)
 class CalendarEventAdmin(admin.ModelAdmin, DynamicArrayMixin):
-    list_display = ("title", "user", "start", "end", "all_day")
-    search_fields = ("title", "user__first_name", "user__last_name", "user__email")
+    """Organization events and students' own events in one place.
+
+    Superusers see both. Everyone else sees only their own orgs' events —
+    students' personal events (organization is null) never match that filter,
+    so club admins cannot read them.
+    """
+
+    class AdminAdvisorForm(forms.ModelForm):
+        class Meta:
+            fields = ("organization", "title", "location", "start", "end", "all_day")
+
+    list_display = ("title", "owner", "location", "start", "end", "all_day")
+    list_filter = (AdminAdvisorListFilter,)
+    date_hierarchy = "start"
+    search_fields = ("title", "location", "organization__name")
     autocomplete_fields = ("user",)
+
+    @admin.display(description="Owner")
+    def owner(self, obj):
+        return obj.organization or obj.user
+
+    def has_module_permission(self, request):
+        return True
+
+    def has_view_permission(self, request, obj=None):
+        if obj is None or request.user.is_superuser:
+            return True
+        if obj.organization is None:
+            return False
+        return obj.organization.is_admin(request.user) or obj.organization.is_advisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return self.has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self.has_change_permission(request, obj)
+
+    def has_add_permission(self, request):
+        return True
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request).select_related("organization", "user")
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(
+            Q(organization__admins=request.user) | Q(organization__advisors=request.user)
+        ).distinct()
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        if not request.user.is_superuser:
+            class UserForm(self.AdminAdvisorForm):
+                def __init__(self, *args, **kwargs):
+                    super().__init__(*args, **kwargs)
+                    q = Q(admins=request.user) | Q(advisors=request.user)
+                    if "organization" in self.fields:
+                        self.fields["organization"].queryset = (
+                            self.fields["organization"].queryset.filter(q).distinct()
+                        )
+
+            kwargs["form"] = UserForm
+
+        return super().get_form(request, obj=obj, **kwargs)
 
 
 @admin.register(WordleEntry)

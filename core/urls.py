@@ -28,6 +28,7 @@ polls.register(
 router.register("orgs", views.OrganizationViewSet, basename="organization")
 router.register("events", views.EventViewSet, basename="event")
 router.register("prizes", views.PrizeViewSet, basename="prize")
+router.register("calendar_events", views.OrganizationCalendarEventViewSet, basename="calendar-event")
 
 urlpatterns = [
     path("api/app_version/", views.AppVersionView.as_view()),

@@ -373,15 +373,31 @@ class Ping(Model):
 class CalendarEvent(Model):
     class Meta:
         ordering = ("start",)
+        constraints = [
+            CheckConstraint(
+                name="%(app_label)s_%(class)s_one_owner",
+                check=(
+                    Q(user__isnull=False, organization__isnull=True)
+                    | Q(user__isnull=True, organization__isnull=False)
+                ),
+            )
+        ]
 
-    user = ForeignKey(USER_MODEL, on_delete=CASCADE, related_name="calendar_events")
+    # Exactly one of these is set: user for a student's own event, organization
+    # for one an org's admins publish to every member's calendar.
+    user = ForeignKey(USER_MODEL, on_delete=CASCADE, related_name="calendar_events", null=True, blank=True)
+    organization = ForeignKey(
+        Organization, on_delete=CASCADE, related_name="calendar_events", null=True, blank=True
+    )
+
     title = CharField(max_length=200)
+    location = CharField(max_length=200, blank=True)
     start = DateTimeField()
     end = DateTimeField()
     all_day = BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.title} — {self.user}"
+        return f"{self.title} — {self.organization or self.user}"
 
 
 @receiver(pre_save, sender=Post)

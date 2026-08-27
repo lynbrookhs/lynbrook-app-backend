@@ -152,10 +152,18 @@ class CreateMembershipSerializer(serializers.ModelSerializer):
         return obj
 
 
+class OrganizationCalendarEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.CalendarEvent
+        fields = ("id", "organization", "title", "location", "start", "end", "all_day")
+
+    organization = NestedOrganizationSerializer(read_only=True)
+
+
 class CalendarEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.CalendarEvent
-        fields = ("id", "title", "start", "end", "all_day")
+        fields = ("id", "title", "location", "start", "end", "all_day")
 
     def validate(self, data):
         start = data.get("start", getattr(self.instance, "start", None))

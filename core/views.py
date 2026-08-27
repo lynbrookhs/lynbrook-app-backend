@@ -139,6 +139,28 @@ class CalendarEventViewSet(NestedUserViewSetMixin, viewsets.ModelViewSet):
         serializer.save(user=self.get_user())
 
 
+class OrganizationCalendarEventViewSet(viewsets.ReadOnlyModelViewSet):
+    """Calendar events an organization publishes to its members.
+
+    Separate from /users/me/calendar_events/, which stays personal and
+    writable. This one is read-only and covers every org the student is an
+    active member of, matching how the ical_links feeds behaved.
+    """
+
+    serializer_class = serializers.OrganizationCalendarEventSerializer
+
+    def get_queryset(self):
+        return (
+            models.CalendarEvent.objects.filter(
+                organization__isnull=False,
+                organization__memberships__user=self.request.user,
+                organization__memberships__active=True,
+            )
+            .select_related("organization")
+            .distinct()
+        )
+
+
 class WordleEntryViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.UpdateModelMixin):
     permission_classes = (NestedUserAccessPolicy,)
     queryset = models.WordleEntry.objects.all()
