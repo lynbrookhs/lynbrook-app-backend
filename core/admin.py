@@ -184,7 +184,6 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                 "category",
                 "day",
                 "time",
-                "link",
                 "ical_links",
             )
 
@@ -197,7 +196,6 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                 "category",
                 "day",
                 "time",
-                "link",
                 "ical_links",
             )
 

@@ -78,7 +78,6 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "day",
             "time",
             "location",
-            "link",
             "ical_links",
             "description",
             "category",
@@ -178,9 +177,19 @@ class ExpoPushTokenSerializer(serializers.ModelSerializer):
         model = models.ExpoPushToken
         fields = ("token",)
 
+    # ExpoPushToken.token is unique, so ModelSerializer would attach a
+    # UniqueValidator and reject re-registering a device with a 400 before
+    # create() ever runs. Registering the same device twice is normal, so the
+    # validator is dropped and create() below handles the collision.
+    token = serializers.CharField(max_length=200, validators=[])
+
     @transaction.atomic
     def create(self, validated_data):
-        obj, _ = self.Meta.model.objects.get_or_create(**validated_data)
+        user = validated_data.pop("user")
+        token = validated_data.pop("token")
+        # A shared or handed-down phone can carry a token already tied to
+        # someone else; the device belongs to whoever is signed in now.
+        obj, _ = self.Meta.model.objects.update_or_create(token=token, defaults={"user": user})
         return obj
 
 

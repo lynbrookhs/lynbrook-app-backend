@@ -176,7 +176,6 @@ class Organization(Model):
     day = IntegerField(choices=DayOfWeek.choices, null=True, blank=True)
     location = CharField(max_length=200, blank=True)
     time = CharField(max_length=200, blank=True)
-    link = URLField(null=True, blank=True)
 
     ical_links = ArrayField(URLField(), blank=True, default=list)
 
