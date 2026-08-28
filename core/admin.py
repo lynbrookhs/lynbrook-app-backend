@@ -313,9 +313,16 @@ class EventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     list_display = ("name", "organization", "start", "end", "points", "user_count")
     search_fields = ("name",)
     readonly_fields = ("code", "qr_code", "sign_in")
+    ordering = ("-start",)
 
+    def get_queryset(self, request):
+        # Counting per row would be one query per event; annotating also makes
+        # the column sortable, so meetings can be ranked by turnout.
+        return super().get_queryset(request).annotate(_user_count=Count("users", distinct=True))
+
+    @admin.display(description="Attendance", ordering="_user_count")
     def user_count(self, obj):
-        return obj.users.count()
+        return obj._user_count
 
     @admin.display(description="QR Code")
     def qr_code(self, obj):
