@@ -3,9 +3,22 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Count
+from PIL import Image, ImageStat
 from rest_framework import serializers
 
 from core import models, wordle
+
+# Basic checks on submitted event photos. These only catch obvious junk — a
+# corrupt file, a thumbnail, a shot of a wall or a lens cap. Whether someone is
+# actually dressed for the spirit day is still a human call.
+#
+# The threshold is deliberately far below anything a real photo produces:
+# measured, a flat colour comes out at 0.00 even after heavy JPEG compression,
+# while the dimmest plausible photo (white shirt, white wall) still reached 4.3.
+# Rejecting a genuine submission during spirit week is worse than letting a bad
+# one through, so this only fires on images that are essentially featureless.
+MIN_PHOTO_SIDE = 200
+MIN_PHOTO_STDDEV = 2
 
 # Nested
 
@@ -250,6 +263,35 @@ class CreateSubmissionSerializer(serializers.ModelSerializer):
         queryset=models.Event.objects.all(), required=False, allow_null=True, write_only=True
     )
     event = EventSerializer(read_only=True)
+
+    def validate_file(self, value):
+        if value is None:
+            return value
+
+        try:
+            image = Image.open(value)
+            width, height = image.size
+            gray = image.convert("L")
+            gray.thumbnail((256, 256))
+            stddev = ImageStat.Stat(gray).stddev[0]
+        except Exception:
+            raise serializers.ValidationError("That file could not be read as a photo.")
+        finally:
+            # The same file object is written to storage afterwards, so it has
+            # to be rewound however the read turned out.
+            value.seek(0)
+
+        if min(width, height) < MIN_PHOTO_SIDE:
+            raise serializers.ValidationError(
+                f"That photo is too small. It needs to be at least {MIN_PHOTO_SIDE} pixels on each side."
+            )
+
+        if stddev < MIN_PHOTO_STDDEV:
+            raise serializers.ValidationError(
+                "That photo looks blank. Please submit a photo of yourself at the event."
+            )
+
+        return value
     file = serializers.FileField(required=False, allow_null=True)
     code = serializers.IntegerField(required=False, allow_null=True, write_only=True)
 
