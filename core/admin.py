@@ -1,11 +1,13 @@
 import csv
+import json
 
 import qrcode
 from datauri import DataURI
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.http.response import Http404, HttpResponse
+from django.db import transaction
+from django.http.response import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import path
 from django.urls.base import reverse
@@ -231,21 +233,30 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         return mark_safe(f'<a href={reverse("admin:core_organization_points", args=[obj.id])}>View Points</a>')
 
     def get_urls(self):
+        wrap = self.admin_site.admin_view
         return [
-            # These shared a name, so reverse() only ever resolved the HTML view
-            # and the CSV export could not be linked to.
-            path("<path:object_id>/points/csv/", self.points_csv_view, name="core_organization_points_csv"),
-            path("<path:object_id>/points/", self.points_view, name="core_organization_points"),
+            path("<path:object_id>/points/csv/", wrap(self.points_csv_view), name="core_organization_points_csv"),
+            path("<path:object_id>/points/update/", wrap(self.points_update_view), name="core_organization_points_update"),
+            path("<path:object_id>/points/", wrap(self.points_view), name="core_organization_points"),
             *super().get_urls(),
         ]
 
     def get_org_with_points(self, request, object_id):
-        qs = super().get_queryset(request)
-        qs = qs.prefetch_related(
+        # self.get_queryset is scoped to the orgs this user is an admin/advisor of, so anyone else gets DoesNotExist.
+        qs = self.get_queryset(request).prefetch_related(
             Prefetch("memberships", Membership.objects.select_related("user").order_by("-points")),
             Prefetch("events", Event.objects.prefetch_related("submissions")),
         )
-        return qs.get(id=object_id)
+        org = qs.get(id=object_id)
+        if not self.has_view_permission(request, org):
+            raise self.model.DoesNotExist
+        return org
+
+    def get_events_with_points(self, org):
+        return [
+            (e, {x.user_id: e.points if x.points is None else x.points for x in e.submissions.all()})
+            for e in org.events.all()
+        ]
 
     def points_view(self, request, object_id):
         try:
@@ -253,13 +264,13 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         except self.model.DoesNotExist:
             return self._get_obj_does_not_exist_redirect(request, self.model._meta, object_id)
 
-        events = [
-            (e, {x.user_id: e.points if x.points is None else x.points for x in e.submissions.all()})
-            for e in org.events.all()
-        ]
+        events = self.get_events_with_points(org)
         context = dict(
             org=org,
+            can_edit=self.has_change_permission(request, org),
+            update_url=reverse("admin:core_organization_points_update", args=[org.id]),
             events=[event.name for event, _ in events],
+            event_ids=[event.id for event, _ in events],
             members=[
                 dict(
                     **membership.user.to_json(),
@@ -272,16 +283,73 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
         return render(request, "core/organization_points.html", context)
 
+    def points_update_view(self, request, object_id):
+        """Edit a single cell of the points grid.
+
+        Body (JSON): {"user": <user id>, "event": <event id> | null, "points": <int> | null}
+        - With "event": creates/updates that user's Submission for the event with a points override,
+          or deletes the Submission when "points" is null. The membership total updates via signals.
+        - Without "event": sets the membership's total points directly.
+        Returns the user's new total and, for event edits, the value now stored for that event cell.
+        """
+        if request.method != "POST":
+            return JsonResponse({"error": "POST required."}, status=405)
+        try:
+            org = self.get_org_with_points(request, object_id)
+        except self.model.DoesNotExist:
+            return JsonResponse({"error": "Not found."}, status=404)
+        if not self.has_change_permission(request, org):
+            return JsonResponse({"error": "You do not have permission to edit points for this organization."}, status=403)
+
+        try:
+            body = json.loads(request.body or b"{}")
+            user_id = int(body["user"])
+            event_id = body.get("event")
+            event_id = None if event_id in (None, "") else int(event_id)
+            points = body.get("points")
+            points = None if points in (None, "") else int(points)
+        except (ValueError, TypeError, KeyError, json.JSONDecodeError):
+            return JsonResponse({"error": "Invalid request body."}, status=400)
+        if points is not None and points < 0:
+            return JsonResponse({"error": "Points cannot be negative."}, status=400)
+
+        with transaction.atomic():
+            try:
+                membership = Membership.objects.select_for_update().get(organization=org, user_id=user_id)
+            except Membership.DoesNotExist:
+                return JsonResponse({"error": "That user is not a member of this organization."}, status=400)
+
+            if event_id is None:
+                if points is None:
+                    return JsonResponse({"error": "Total points cannot be blank."}, status=400)
+                membership.points = points
+                membership.save(update_fields=("points",))
+                return JsonResponse({"points": membership.points})
+
+            try:
+                event = org.events.get(id=event_id)
+            except Event.DoesNotExist:
+                return JsonResponse({"error": "That event does not belong to this organization."}, status=400)
+
+            if points is None:
+                Submission.objects.filter(user_id=user_id, event=event).delete()
+                event_points = None
+            else:
+                submission, _ = Submission.objects.update_or_create(
+                    user_id=user_id, event=event, defaults=dict(points=points)
+                )
+                event_points = submission.get_points()
+
+            membership.refresh_from_db(fields=("points",))
+            return JsonResponse({"points": membership.points, "event_points": event_points})
+
     def points_csv_view(self, request, object_id):
         try:
             org = self.get_org_with_points(request, object_id)
         except self.model.DoesNotExist:
             raise Http404
 
-        events = [
-            (e, {x.user_id: e.points if x.points is None else x.points for x in e.submissions.all()})
-            for e in org.events.all()
-        ]
+        events = self.get_events_with_points(org)
         response = HttpResponse(
             content_type="text/csv", headers={"Content-Disposition": 'attachment; filename="points.csv"'}
         )

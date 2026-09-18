@@ -38,26 +38,90 @@
             margin: 0;
             margin-top: 50px;
         }
+
+        #header h1 {
+            margin: 0 16px;
+        }
+
+        #header .hint {
+            color: #555;
+            font-size: 14px;
+        }
+
+        #status {
+            position: fixed;
+            bottom: 12px;
+            right: 12px;
+            z-index: 1000;
+            padding: 8px 12px;
+            border-radius: 4px;
+            background: #333;
+            color: white;
+            font-size: 14px;
+            display: none;
+        }
+
+        #status.error {
+            background: #b00020;
+        }
     </style>
 </head>
 
 <body>
     <div id="header">
         <h1>{{ org }} Points</h1>
+        {% if can_edit %}
+        <span class="hint">Double-click a Total Points or event cell to edit. Changes save automatically.</span>
+        {% endif %}
         <a id="csv" href="{% url 'admin:core_organization_points_csv' org.id %}">Download CSV</a>
     </div>
     <div id="hot"></div>
+    <div id="status"></div>
 
     {{ members|json_script:"members-data" }}
     {{ events|json_script:"events-data" }}
+    {{ event_ids|json_script:"event-ids-data" }}
+    {{ can_edit|json_script:"can-edit-data" }}
+    {{ update_url|json_script:"update-url-data" }}
 
     <script>
         const members = JSON.parse(document.getElementById("members-data").textContent);
         const events = JSON.parse(document.getElementById("events-data").textContent);
+        const eventIds = JSON.parse(document.getElementById("event-ids-data").textContent);
+        const canEdit = JSON.parse(document.getElementById("can-edit-data").textContent);
+        const updateUrl = JSON.parse(document.getElementById("update-url-data").textContent);
+        const csrfToken = "{{ csrf_token }}";
+
+        const statusElement = document.querySelector("#status");
+        let statusTimeout = null;
+        function showStatus(message, isError) {
+            statusElement.textContent = message;
+            statusElement.className = isError ? "error" : "";
+            statusElement.style.display = "block";
+            clearTimeout(statusTimeout);
+            statusTimeout = setTimeout(() => { statusElement.style.display = "none"; }, isError ? 6000 : 1500);
+        }
+
+        // Sends one cell edit to the server. `event` is null for the Total Points column.
+        async function saveCell(userId, eventId, points) {
+            const response = await fetch(updateUrl, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": csrfToken },
+                body: JSON.stringify({ user: userId, event: eventId, points: points }),
+            });
+            let data = {};
+            try { data = await response.json(); } catch (e) { }
+            if (!response.ok) {
+                throw new Error(data.error || `Save failed (${response.status}).`);
+            }
+            return data;
+        }
+
         const hotElement = document.querySelector("#hot");
         const hot = new Handsontable(hotElement, {
             data: members,
-            readOnly: true,
+            readOnly: !canEdit,
             width: "auto",
             height: "auto",
             rowHeaders: true,
@@ -69,15 +133,55 @@
                 ...events
             ],
             columns: [
-                { data: "first_name", type: "text" },
-                { data: "last_name", type: "text" },
-                { data: "points", type: "numeric" },
-                ...events.map((x, idx) => ({ data: `events.${idx}`, type: "numeric" }))
+                { data: "first_name", type: "text", readOnly: true },
+                { data: "last_name", type: "text", readOnly: true },
+                { data: "points", type: "numeric", allowInvalid: false, validator: nonNegativeInteger },
+                ...events.map((x, idx) => ({
+                    data: `events.${idx}`,
+                    type: "numeric",
+                    allowInvalid: false,
+                    allowEmpty: true,
+                    validator: nonNegativeInteger,
+                }))
             ],
             multiColumnSorting: true,
             language: "en-US",
             licenseKey: "non-commercial-and-evaluation",
+            afterChange: onCellChanged,
         });
+
+        function nonNegativeInteger(value, callback) {
+            if (value === null || value === undefined || value === "") {
+                // Event cells may be cleared (removes the submission); the total may not.
+                callback(this.prop === "points" ? false : true);
+                return;
+            }
+            callback(Number.isInteger(Number(value)) && Number(value) >= 0);
+        }
+
+        function onCellChanged(changes, source) {
+            // "loadData" is the initial fill; "server" is our own write-back of the recalculated total.
+            if (!changes || !canEdit || source === "loadData" || source === "server") return;
+
+            for (const [row, prop, oldValue, newValue] of changes) {
+                if (oldValue === newValue) continue;
+                const physicalRow = hot.toPhysicalRow(row);
+                const member = hot.getSourceDataAtRow(physicalRow);
+                const isTotal = prop === "points";
+                const eventId = isTotal ? null : eventIds[Number(String(prop).split(".")[1])];
+                const points = newValue === "" || newValue === null || newValue === undefined ? null : Number(newValue);
+
+                saveCell(member.id, eventId, points).then((data) => {
+                    if (!isTotal) {
+                        hot.setDataAtRowProp(hot.toVisualRow(physicalRow), "points", data.points, "server");
+                    }
+                    showStatus("Saved", false);
+                }).catch((error) => {
+                    hot.setDataAtRowProp(hot.toVisualRow(physicalRow), prop, oldValue, "server");
+                    showStatus(error.message, true);
+                });
+            }
+        }
     </script>
 </body>
 
