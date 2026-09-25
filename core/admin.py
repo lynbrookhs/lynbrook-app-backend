@@ -1,5 +1,7 @@
 import csv
 import json
+from collections import defaultdict
+from datetime import datetime
 
 import qrcode
 from datauri import DataURI
@@ -11,12 +13,30 @@ from django.http.response import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import path
 from django.urls.base import reverse
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext as _
 from django_better_admin_arrayfield.admin.mixins import DynamicArrayMixin
 from qrcode.image.svg import SvgPathFillImage
 
 from core.models import *
+
+
+# The "this school year" points column counts everything from the 1st of this month onward.
+# Nothing else is year-specific: the start date and header label roll over on their own each year.
+SCHOOL_YEAR_START_MONTH = 8  # August
+
+
+def school_year_start(today=None):
+    """Start of the current school year as an aware datetime (midnight local time)."""
+    today = today or timezone.localdate()
+    year = today.year if today.month >= SCHOOL_YEAR_START_MONTH else today.year - 1
+    return timezone.make_aware(datetime(year, SCHOOL_YEAR_START_MONTH, 1))
+
+
+def school_year_label(start):
+    """e.g. "2026–27 Points" for a year starting Aug 2026."""
+    return f"{start.year}–{(start.year + 1) % 100:02d} Points"
 
 
 def with_inline_organization_permissions(get_organization=lambda x: x):
@@ -258,6 +278,24 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             for e in org.events.all()
         ]
 
+    def get_prior_year_points(self, events, year_start):
+        """user_id -> points from events dated before the current school year.
+
+        School-year points are Total minus this, so anything without an event date
+        (manual edits to the total) counts toward the current year, and the columns
+        always reconcile: Total = prior years + this year.
+        """
+        prior = defaultdict(int)
+        for event, users in events:
+            if event.start < year_start:
+                for user_id, points in users.items():
+                    prior[user_id] += points
+        return prior
+
+    @staticmethod
+    def year_points(total, prior):
+        return max(total - prior, 0)
+
     def points_view(self, request, object_id):
         try:
             org = self.get_org_with_points(request, object_id)
@@ -265,16 +303,20 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             return self._get_obj_does_not_exist_redirect(request, self.model._meta, object_id)
 
         events = self.get_events_with_points(org)
+        year_start = school_year_start()
+        prior = self.get_prior_year_points(events, year_start)
         context = dict(
             org=org,
             can_edit=self.has_change_permission(request, org),
             update_url=reverse("admin:core_organization_points_update", args=[org.id]),
+            year_label=school_year_label(year_start),
             events=[event.name for event, _ in events],
             event_ids=[event.id for event, _ in events],
             members=[
                 dict(
                     **membership.user.to_json(),
                     points=membership.points,
+                    year_points=self.year_points(membership.points, prior.get(membership.user_id, 0)),
                     events=[users.get(membership.user.id) for event, users in events],
                 )
                 for membership in org.memberships.all()
@@ -290,7 +332,8 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         - With "event": creates/updates that user's Submission for the event with a points override,
           or deletes the Submission when "points" is null. The membership total updates via signals.
         - Without "event": sets the membership's total points directly.
-        Returns the user's new total and, for event edits, the value now stored for that event cell.
+        Returns the user's new total, their school-year points, and, for event edits, the value now
+        stored for that event cell.
         """
         if request.method != "POST":
             return JsonResponse({"error": "POST required."}, status=405)
@@ -319,29 +362,37 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             except Membership.DoesNotExist:
                 return JsonResponse({"error": "That user is not a member of this organization."}, status=400)
 
+            result = {}
             if event_id is None:
                 if points is None:
                     return JsonResponse({"error": "Total points cannot be blank."}, status=400)
                 membership.points = points
                 membership.save(update_fields=("points",))
-                return JsonResponse({"points": membership.points})
-
-            try:
-                event = org.events.get(id=event_id)
-            except Event.DoesNotExist:
-                return JsonResponse({"error": "That event does not belong to this organization."}, status=400)
-
-            if points is None:
-                Submission.objects.filter(user_id=user_id, event=event).delete()
-                event_points = None
             else:
-                submission, _ = Submission.objects.update_or_create(
-                    user_id=user_id, event=event, defaults=dict(points=points)
-                )
-                event_points = submission.get_points()
+                try:
+                    event = org.events.get(id=event_id)
+                except Event.DoesNotExist:
+                    return JsonResponse({"error": "That event does not belong to this organization."}, status=400)
 
-            membership.refresh_from_db(fields=("points",))
-            return JsonResponse({"points": membership.points, "event_points": event_points})
+                if points is None:
+                    Submission.objects.filter(user_id=user_id, event=event).delete()
+                    result["event_points"] = None
+                else:
+                    submission, _ = Submission.objects.update_or_create(
+                        user_id=user_id, event=event, defaults=dict(points=points)
+                    )
+                    result["event_points"] = submission.get_points()
+                membership.refresh_from_db(fields=("points",))
+
+            prior = sum(
+                s.get_points()
+                for s in Submission.objects.filter(
+                    user_id=user_id, event__organization=org, event__start__lt=school_year_start()
+                ).select_related("event")
+            )
+            result["points"] = membership.points
+            result["year_points"] = self.year_points(membership.points, prior)
+            return JsonResponse(result)
 
     def points_csv_view(self, request, object_id):
         try:
@@ -350,21 +401,28 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             raise Http404
 
         events = self.get_events_with_points(org)
+        year_start = school_year_start()
+        year_label = school_year_label(year_start)
+        prior = self.get_prior_year_points(events, year_start)
         response = HttpResponse(
             content_type="text/csv", headers={"Content-Disposition": 'attachment; filename="points.csv"'}
         )
         writer = csv.DictWriter(
             response,
-            fieldnames=["id", "email", "first_name", "last_name", "grad_year", "points", *[e.name for e, _ in events]],
+            fieldnames=[
+                "id", "email", "first_name", "last_name", "grad_year", "points", year_label,
+                *[e.name for e, _ in events],
+            ],
         )
         writer.writeheader()
         for membership in org.memberships.all():
             writer.writerow(
-                dict(
+                {
                     **membership.user.to_json(),
-                    points=membership.points,
+                    "points": membership.points,
+                    year_label: self.year_points(membership.points, prior.get(membership.user_id, 0)),
                     **{event.name: users.get(membership.user.id) for event, users in events},
-                )
+                }
             )
         return response
 

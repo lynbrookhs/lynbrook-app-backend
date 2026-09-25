@@ -83,6 +83,7 @@
     {{ event_ids|json_script:"event-ids-data" }}
     {{ can_edit|json_script:"can-edit-data" }}
     {{ update_url|json_script:"update-url-data" }}
+    {{ year_label|json_script:"year-label-data" }}
 
     <script>
         const members = JSON.parse(document.getElementById("members-data").textContent);
@@ -90,6 +91,7 @@
         const eventIds = JSON.parse(document.getElementById("event-ids-data").textContent);
         const canEdit = JSON.parse(document.getElementById("can-edit-data").textContent);
         const updateUrl = JSON.parse(document.getElementById("update-url-data").textContent);
+        const yearLabel = JSON.parse(document.getElementById("year-label-data").textContent);
         const csrfToken = "{{ csrf_token }}";
 
         const statusElement = document.querySelector("#status");
@@ -125,17 +127,20 @@
             width: "auto",
             height: "auto",
             rowHeaders: true,
-            fixedColumnsLeft: 3,
+            fixedColumnsLeft: 4,
             colHeaders: [
                 "First Name",
                 "Last Name",
                 "Total Points",
+                yearLabel,
                 ...events
             ],
             columns: [
                 { data: "first_name", type: "text", readOnly: true },
                 { data: "last_name", type: "text", readOnly: true },
                 { data: "points", type: "numeric", allowInvalid: false, validator: nonNegativeInteger },
+                // Computed on the server: total minus points from events before this school year.
+                { data: "year_points", type: "numeric", readOnly: true },
                 ...events.map((x, idx) => ({
                     data: `events.${idx}`,
                     type: "numeric",
@@ -172,9 +177,11 @@
                 const points = newValue === "" || newValue === null || newValue === undefined ? null : Number(newValue);
 
                 saveCell(member.id, eventId, points).then((data) => {
+                    const visualRow = hot.toVisualRow(physicalRow);
                     if (!isTotal) {
-                        hot.setDataAtRowProp(hot.toVisualRow(physicalRow), "points", data.points, "server");
+                        hot.setDataAtRowProp(visualRow, "points", data.points, "server");
                     }
+                    hot.setDataAtRowProp(visualRow, "year_points", data.year_points, "server");
                     showStatus("Saved", false);
                 }).catch((error) => {
                     hot.setDataAtRowProp(hot.toVisualRow(physicalRow), prop, oldValue, "server");
