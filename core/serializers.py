@@ -185,6 +185,88 @@ class CalendarEventSerializer(serializers.ModelSerializer):
         return data
 
 
+class MemorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Memory
+        fields = ("id", "photo", "note", "recipients", "created_at")
+
+    recipients = NestedUserSerializer(many=True, read_only=True)
+
+
+class ReceivedMemorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Memory
+        fields = ("id", "photo", "note", "sender", "created_at")
+
+    sender = NestedUserSerializer(read_only=True)
+
+
+class CreateMemorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Memory
+        fields = ("id", "photo", "note", "recipients", "created_at")
+        read_only_fields = ("id", "created_at")
+
+    MAX_RECIPIENTS = 20
+    MAX_PHOTO_BYTES = 10 * 1024 * 1024
+    MAX_UPLOADS = 100
+
+    photo = serializers.ImageField()
+    recipients = serializers.CharField(write_only=True, help_text="JSON list of user ids")
+
+    def validate_photo(self, photo):
+        if photo.size > self.MAX_PHOTO_BYTES:
+            raise serializers.ValidationError("Photo must be under 10 MB.")
+        return photo
+
+    def validate_recipients(self, raw):
+        import json
+
+        try:
+            ids = json.loads(raw)
+            assert isinstance(ids, list) and all(isinstance(x, int) for x in ids)
+        except (ValueError, AssertionError):
+            raise serializers.ValidationError("Expected a JSON list of user ids.")
+        ids = list(dict.fromkeys(ids))
+        if not ids:
+            raise serializers.ValidationError("Tag at least one person.")
+        if len(ids) > self.MAX_RECIPIENTS:
+            raise serializers.ValidationError(f"At most {self.MAX_RECIPIENTS} people per photo.")
+        users = list(
+            get_user_model()
+            .objects.filter(id__in=ids, is_active=True)
+            .exclude(type=models.UserType.GUEST)
+        )
+        if len(users) != len(ids):
+            raise serializers.ValidationError("One or more tagged people were not found.")
+        return users
+
+    def validate(self, data):
+        user = self.context["request"].user
+        year = models.current_senior_year()
+        if user.grad_year != year:
+            raise serializers.ValidationError("Only current seniors can upload memories.")
+        if models.MemoryRelease.is_released(year):
+            raise serializers.ValidationError("This year's memories have already been released.")
+        if user.sent_memories.count() >= self.MAX_UPLOADS:
+            raise serializers.ValidationError("Upload limit reached.")
+        return data
+
+    def create(self, validated_data):
+        recipients = validated_data.pop("recipients")
+        memory = models.Memory.objects.create(
+            grad_year=models.current_senior_year(), **validated_data
+        )
+        memory.recipients.set(recipients)
+        return memory
+
+
+class MemoryRecipientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = get_user_model()
+        fields = ("id", "first_name", "last_name", "grad_year")
+
+
 class ExpoPushTokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ExpoPushToken

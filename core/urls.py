@@ -25,6 +25,7 @@ polls.register(
     parents_query_lookups=["poll__post", "poll"],
 )
 
+router.register("memories", views.MemoryViewSet, basename="memory")
 router.register("orgs", views.OrganizationViewSet, basename="organization")
 router.register("events", views.EventViewSet, basename="event")
 router.register("prizes", views.PrizeViewSet, basename="prize")

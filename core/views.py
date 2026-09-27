@@ -7,6 +7,7 @@ from django.shortcuts import render
 from django.views.generic.base import TemplateView
 from rest_framework import mixins, pagination, parsers, status, views, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework_extensions.mixins import NestedViewSetMixin
 
@@ -159,6 +160,78 @@ class OrganizationCalendarEventViewSet(viewsets.ReadOnlyModelViewSet):
             .select_related("organization")
             .distinct()
         )
+
+
+class MemoryViewSet(
+    viewsets.ReadOnlyModelViewSet, mixins.CreateModelMixin, mixins.DestroyModelMixin
+):
+    """Senior memories. List/retrieve/destroy operate on the caller's own uploads;
+    `received/` exposes memories the caller was tagged in once released."""
+
+    def get_queryset(self):
+        return models.Memory.objects.filter(sender=self.request.user)
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return serializers.CreateMemorySerializer
+        return serializers.MemorySerializer
+
+    def perform_create(self, serializer):
+        serializer.save(sender=self.request.user)
+
+    def perform_destroy(self, instance):
+        if models.MemoryRelease.is_released(instance.grad_year):
+            raise PermissionDenied("Already released; ask an admin to remove it.")
+        instance.delete()
+
+    @action(detail=False)
+    def received(self, request):
+        year = models.current_senior_year()
+        released = models.MemoryRelease.is_released(year)
+        memories = []
+        if released:
+            qs = request.user.received_memories.filter(grad_year=year).select_related("sender")
+            memories = serializers.ReceivedMemorySerializer(
+                qs, many=True, context={"request": request}
+            ).data
+        return Response({"released": released, "memories": memories})
+
+    @action(detail=False)
+    def recipients(self, request):
+        if request.user.grad_year != models.current_senior_year():
+            raise PermissionDenied("Only seniors can search for people to tag.")
+        q = request.query_params.get("q", "").strip()
+        if len(q) < 2:
+            return Response([])
+        parts = q.split()
+        qs = get_user_model().objects.filter(is_active=True).exclude(type=models.UserType.GUEST)
+        for part in parts[:3]:
+            qs = qs.filter(Q(first_name__icontains=part) | Q(last_name__icontains=part))
+        qs = qs.order_by("first_name", "last_name")[:15]
+        return Response(serializers.MemoryRecipientSerializer(qs, many=True).data)
+
+    @action(detail=True)
+    def polaroid(self, request, pk=None):
+        from django.http import FileResponse
+
+        from core.polaroid import render_polaroid
+
+        memory = models.Memory.objects.filter(pk=pk).first()
+        if memory is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        is_sender = memory.sender_id == request.user.id
+        is_recipient = memory.recipients.filter(id=request.user.id).exists()
+        if not is_sender and not (
+            is_recipient and models.MemoryRelease.is_released(memory.grad_year)
+        ):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        image = render_polaroid(
+            memory.photo.open("rb"),
+            memory.note,
+            f"{memory.sender.first_name} {memory.sender.last_name}".strip(),
+            memory.created_at,
+        )
+        return FileResponse(image, content_type="image/jpeg", filename=f"memory-{memory.pk}.jpg")
 
 
 class WordleEntryViewSet(NestedUserViewSetMixin, viewsets.ReadOnlyModelViewSet, mixins.UpdateModelMixin):

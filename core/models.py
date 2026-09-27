@@ -356,6 +356,47 @@ class WordleEntry(Model):
     solved = BooleanField(default=False)
 
 
+def current_senior_year():
+    """The grad year of the current senior class (school year rolls over in July)."""
+    today = date.today()
+    return today.year + 1 if today.month >= 7 else today.year
+
+
+class Memory(Model):
+    """A senior-memories photo: uploaded during the year, delivered to tagged
+    recipients all at once when that class's MemoryRelease is created."""
+
+    class Meta:
+        ordering = ("-created_at",)
+        verbose_name_plural = "Memories"
+
+    sender = ForeignKey(USER_MODEL, on_delete=CASCADE, related_name="sent_memories")
+    grad_year = IntegerField(help_text="Senior class this memory belongs to (controls its release).")
+    photo = ImageField(upload_to="memories/")
+    note = CharField(max_length=300, blank=True)
+    recipients = ManyToManyField(USER_MODEL, related_name="received_memories", blank=True)
+    created_at = DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.sender} — {self.note[:40]}" if self.note else f"{self.sender} — (no note)"
+
+
+class MemoryRelease(Model):
+    """Created only by the release_memories management command. Its existence
+    makes all memories of that grad year visible to their recipients."""
+
+    grad_year = IntegerField(unique=True)
+    released_at = DateTimeField(auto_now_add=True)
+    released_by = CharField(max_length=200, blank=True)
+
+    def __str__(self):
+        return f"Class of {self.grad_year} memories released {self.released_at:%Y-%m-%d}"
+
+    @classmethod
+    def is_released(cls, grad_year):
+        return cls.objects.filter(grad_year=grad_year).exists()
+
+
 class Ping(Model):
     class Meta:
         ordering = ("-created_at",)

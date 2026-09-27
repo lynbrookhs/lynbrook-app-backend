@@ -624,6 +624,52 @@ class PingAdmin(admin.ModelAdmin, DynamicArrayMixin):
         return True
 
 
+class SuperuserOnlyAdmin(admin.ModelAdmin):
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(Memory)
+class MemoryAdmin(SuperuserOnlyAdmin):
+    """Moderation view for senior memories. Superusers only — photos stay private
+    from club admins/advisors. Delete anything inappropriate before release."""
+
+    list_display = ("sender", "short_note", "grad_year", "recipient_count", "created_at")
+    list_filter = ("grad_year",)
+    search_fields = ("sender__first_name", "sender__last_name", "sender__email", "note")
+    readonly_fields = ("sender", "grad_year", "note", "recipients", "created_at", "preview")
+    exclude = ("photo",)
+    date_hierarchy = "created_at"
+
+    def short_note(self, obj):
+        return (obj.note[:60] + "…") if len(obj.note) > 60 else obj.note
+
+    def recipient_count(self, obj):
+        return obj.recipients.count()
+
+    @admin.display(description="Photo")
+    def preview(self, obj):
+        return mark_safe(f'<img src="{obj.photo.url}" style="max-width:480px;max-height:480px;">')
+
+
+@admin.register(MemoryRelease)
+class MemoryReleaseAdmin(SuperuserOnlyAdmin):
+    list_display = ("grad_year", "released_at", "released_by")
+    readonly_fields = ("grad_year", "released_at", "released_by")
+
+
 @admin.register(CalendarEvent)
 class CalendarEventAdmin(admin.ModelAdmin, DynamicArrayMixin):
     """Organization events and students' own events in one place.
