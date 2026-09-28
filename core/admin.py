@@ -9,6 +9,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.db import transaction
+from django.db.models import Sum
 from django.http.response import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import path
@@ -164,6 +165,8 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
     class MembershipAdmin(admin.TabularInline, DynamicArrayMixin):
         model = Membership
         extra = 0
+        # Totals are edited from the organization's points grid, which logs each change with a date.
+        readonly_fields = ("points",)
 
     class ExpoPushTokenAdmin(admin.TabularInline, DynamicArrayMixin):
         model = ExpoPushToken
@@ -278,23 +281,52 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             for e in org.events.all()
         ]
 
-    def get_prior_year_points(self, events, year_start):
-        """user_id -> points from events dated before the current school year.
-
-        School-year points are Total minus this, so anything without an event date
-        (manual edits to the total) counts toward the current year, and the columns
-        always reconcile: Total = prior years + this year.
-        """
-        prior = defaultdict(int)
+    def get_year_event_points(self, events, year_start):
+        """user_id -> points from events dated on/after the start of the current school year."""
+        totals = defaultdict(int)
         for event, users in events:
-            if event.start < year_start:
+            if event.start >= year_start:
                 for user_id, points in users.items():
-                    prior[user_id] += points
-        return prior
+                    totals[user_id] += points
+        return totals
 
-    @staticmethod
-    def year_points(total, prior):
-        return max(total - prior, 0)
+    def get_year_adjustments(self, org, year_start):
+        """membership_id -> manual points charged to the current school year."""
+        rows = (
+            PointsAdjustment.objects.filter(membership__organization=org, created_at__gte=year_start)
+            .values("membership_id")
+            .annotate(total=Sum("year_delta"))
+        )
+        return {row["membership_id"]: row["total"] for row in rows}
+
+    def get_member_year_points(self, membership, year_start):
+        """School-year points for one member, read fresh from the database."""
+        events = (
+            Submission.objects.filter(
+                user_id=membership.user_id, event__organization_id=membership.organization_id, event__start__gte=year_start
+            )
+            .select_related("event")
+        )
+        adjustments = membership.adjustments.filter(created_at__gte=year_start).aggregate(total=Sum("year_delta"))
+        return max(sum(s.get_points() for s in events) + (adjustments["total"] or 0), 0)
+
+    def get_members_with_points(self, org, events, year_start):
+        """Rows for the grid/CSV, ranked by school-year points then total."""
+        year_events = self.get_year_event_points(events, year_start)
+        year_adjustments = self.get_year_adjustments(org, year_start)
+        members = [
+            dict(
+                **membership.user.to_json(),
+                points=membership.points,
+                year_points=max(
+                    year_events.get(membership.user_id, 0) + year_adjustments.get(membership.id, 0), 0
+                ),
+                events=[users.get(membership.user_id) for event, users in events],
+            )
+            for membership in org.memberships.all()
+        ]
+        members.sort(key=lambda m: (-m["year_points"], -m["points"], m["last_name"], m["first_name"]))
+        return members
 
     def points_view(self, request, object_id):
         try:
@@ -304,7 +336,6 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
 
         events = self.get_events_with_points(org)
         year_start = school_year_start()
-        prior = self.get_prior_year_points(events, year_start)
         context = dict(
             org=org,
             can_edit=self.has_change_permission(request, org),
@@ -312,15 +343,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             year_label=school_year_label(year_start),
             events=[event.name for event, _ in events],
             event_ids=[event.id for event, _ in events],
-            members=[
-                dict(
-                    **membership.user.to_json(),
-                    points=membership.points,
-                    year_points=self.year_points(membership.points, prior.get(membership.user_id, 0)),
-                    events=[users.get(membership.user.id) for event, users in events],
-                )
-                for membership in org.memberships.all()
-            ],
+            members=self.get_members_with_points(org, events, year_start),
         )
 
         return render(request, "core/organization_points.html", context)
@@ -331,7 +354,9 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         Body (JSON): {"user": <user id>, "event": <event id> | null, "points": <int> | null}
         - With "event": creates/updates that user's Submission for the event with a points override,
           or deletes the Submission when "points" is null. The membership total updates via signals.
-        - Without "event": sets the membership's total points directly.
+        - Without "event": sets the membership's total points directly and logs a dated PointsAdjustment
+          so the change counts toward the current school year. A reduction is charged to this year only
+          up to the member's current school-year balance; the remainder comes off prior years.
         Returns the user's new total, their school-year points, and, for event edits, the value now
         stored for that event cell.
         """
@@ -362,12 +387,23 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             except Membership.DoesNotExist:
                 return JsonResponse({"error": "That user is not a member of this organization."}, status=400)
 
+            year_start = school_year_start()
             result = {}
             if event_id is None:
                 if points is None:
                     return JsonResponse({"error": "Total points cannot be blank."}, status=400)
-                membership.points = points
-                membership.save(update_fields=("points",))
+                delta = points - membership.points
+                if delta != 0:
+                    if delta > 0:
+                        year_delta = delta
+                    else:
+                        balance = self.get_member_year_points(membership, year_start)
+                        year_delta = -min(-delta, balance)
+                    membership.points = points
+                    membership.save(update_fields=("points",))
+                    PointsAdjustment.objects.create(
+                        membership=membership, delta=delta, year_delta=year_delta, created_by=request.user
+                    )
             else:
                 try:
                     event = org.events.get(id=event_id)
@@ -384,14 +420,8 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                     result["event_points"] = submission.get_points()
                 membership.refresh_from_db(fields=("points",))
 
-            prior = sum(
-                s.get_points()
-                for s in Submission.objects.filter(
-                    user_id=user_id, event__organization=org, event__start__lt=school_year_start()
-                ).select_related("event")
-            )
             result["points"] = membership.points
-            result["year_points"] = self.year_points(membership.points, prior)
+            result["year_points"] = self.get_member_year_points(membership, year_start)
             return JsonResponse(result)
 
     def points_csv_view(self, request, object_id):
@@ -403,7 +433,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         events = self.get_events_with_points(org)
         year_start = school_year_start()
         year_label = school_year_label(year_start)
-        prior = self.get_prior_year_points(events, year_start)
+        members = self.get_members_with_points(org, events, year_start)
         response = HttpResponse(
             content_type="text/csv", headers={"Content-Disposition": 'attachment; filename="points.csv"'}
         )
@@ -415,13 +445,12 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             ],
         )
         writer.writeheader()
-        for membership in org.memberships.all():
+        for member in members:
             writer.writerow(
                 {
-                    **membership.user.to_json(),
-                    "points": membership.points,
-                    year_label: self.year_points(membership.points, prior.get(membership.user_id, 0)),
-                    **{event.name: users.get(membership.user.id) for event, users in events},
+                    **{k: v for k, v in member.items() if k not in ("year_points", "events")},
+                    year_label: member["year_points"],
+                    **{event.name: value for (event, _), value in zip(events, member["events"])},
                 }
             )
         return response

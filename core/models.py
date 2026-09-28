@@ -211,6 +211,29 @@ class Membership(Model):
     receive_pings = BooleanField(default=False, help_text="Receive push notification pings from this organization's admins.")
 
 
+class PointsAdjustment(Model):
+    """A manual edit to a membership's total points, made from the admin points grid.
+
+    Event points carry the event's date; this gives manual rewards and corrections a date too,
+    so the "this school year" column can count them in the year they were given.
+    """
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    membership = ForeignKey(Membership, on_delete=CASCADE, related_name="adjustments")
+    delta = IntegerField(help_text="Change to the total (new total minus old total).")
+    year_delta = IntegerField(
+        help_text="Portion charged to the school year this was made in. Equals delta for additions; "
+        "a reduction is charged to the current year only up to its balance, the rest comes off prior years."
+    )
+    created_by = ForeignKey(USER_MODEL, null=True, blank=True, on_delete=SET_NULL, related_name="+")
+    created_at = DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.membership.user} {self.delta:+d} in {self.membership.organization}"
+
+
 class Event(Model):
     class Meta:
         constraints = [

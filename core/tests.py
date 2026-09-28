@@ -14,6 +14,7 @@ from core.models import (
     Membership,
     Organization,
     OrganizationType,
+    PointsAdjustment,
     Submission,
     User,
     UserType,
@@ -93,7 +94,7 @@ class OrganizationPointsAdminTests(TestCase):
         self.client.force_login(self.officer)
         response = self.post_update(user=self.member.id, event=None, points=42)
         self.assertEqual(response.status_code, 200, response.content)
-        self.assertEqual(response.json(), {"points": 42, "year_points": 42})
+        self.assertEqual(response.json(), {"points": 42, "year_points": 37})  # the original 5 are undated
         self.membership.refresh_from_db()
         self.assertEqual(self.membership.points, 42)
 
@@ -101,17 +102,17 @@ class OrganizationPointsAdminTests(TestCase):
         self.client.force_login(self.officer)
         response = self.post_update(user=self.member.id, event=self.event.id, points=7)
         self.assertEqual(response.status_code, 200, response.content)
-        self.assertEqual(response.json(), {"points": 12, "year_points": 12, "event_points": 7})
+        self.assertEqual(response.json(), {"points": 12, "year_points": 7, "event_points": 7})
         submission = Submission.objects.get(user=self.member, event=self.event)
         self.assertEqual(submission.points, 7)
 
         # Editing again replaces the override and re-adjusts the total by the difference.
         response = self.post_update(user=self.member.id, event=self.event.id, points=2)
-        self.assertEqual(response.json(), {"points": 7, "year_points": 7, "event_points": 2})
+        self.assertEqual(response.json(), {"points": 7, "year_points": 2, "event_points": 2})
 
         # Clearing the cell deletes the submission and removes its points.
         response = self.post_update(user=self.member.id, event=self.event.id, points=None)
-        self.assertEqual(response.json(), {"points": 5, "year_points": 5, "event_points": None})
+        self.assertEqual(response.json(), {"points": 5, "year_points": 0, "event_points": None})
         self.assertFalse(Submission.objects.filter(user=self.member, event=self.event).exists())
 
     def test_rejects_bad_input(self):
@@ -145,14 +146,14 @@ class OrganizationPointsAdminTests(TestCase):
 
 
 class SchoolYearPointsTests(TestCase):
-    """The "this school year" column: total minus points from events dated before Aug 1."""
+    """The "this school year" column: this year's event points plus this year's logged manual edits."""
 
     def setUp(self):
         self.club = make_club("Chess Club")
         self.officer = make_user("officer@example.com")
         self.club.admins.add(self.officer)
         self.member = make_user("member@example.com", first_name="Mia", last_name="Member")
-        Membership.objects.create(user=self.member, organization=self.club)
+        self.membership = Membership.objects.create(user=self.member, organization=self.club)
 
         self.year_start = school_year_start()
         # 7 points from last school year, 23 from this one -> total 30, this year 23.
@@ -162,9 +163,19 @@ class SchoolYearPointsTests(TestCase):
         Submission.objects.create(user=self.member, event=self.new_event)
         self.client.force_login(self.officer)
 
-    def member_row(self):
+    def set_total(self, points, user=None):
+        response = self.client.post(
+            reverse("admin:core_organization_points_update", args=[self.club.id]),
+            data=json.dumps(dict(user=(user or self.member).id, points=points)),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        return response.json()
+
+    def member_row(self, user=None):
         response = self.client.get(reverse("admin:core_organization_points", args=[self.club.id]))
-        return response.context, response.context["members"][0]
+        user = user or self.member
+        return response.context, next(m for m in response.context["members"] if m["id"] == user.id)
 
     def test_school_year_start_rolls_over_on_august_first(self):
         cases = {
@@ -185,29 +196,65 @@ class SchoolYearPointsTests(TestCase):
         self.assertEqual(row["year_points"], 23)
         self.assertEqual(context["year_label"], school_year_label(self.year_start))
 
-    def test_manual_total_edit_counts_toward_this_year(self):
-        response = self.client.post(
-            reverse("admin:core_organization_points_update", args=[self.club.id]),
-            data=json.dumps(dict(user=self.member.id, points=45)),
-            content_type="application/json",
-        )
-        self.assertEqual(response.json(), {"points": 45, "year_points": 38})
+    def test_manual_addition_counts_toward_this_year_and_is_logged(self):
+        self.assertEqual(self.set_total(45), {"points": 45, "year_points": 38})
         _, row = self.member_row()
         self.assertEqual((row["points"], row["year_points"]), (45, 38))
+        adjustment = PointsAdjustment.objects.get()
+        self.assertEqual((adjustment.membership, adjustment.delta, adjustment.year_delta), (self.membership, 15, 15))
+        self.assertEqual(adjustment.created_by, self.officer)
 
-    def test_school_year_points_never_negative(self):
-        response = self.client.post(
-            reverse("admin:core_organization_points_update", args=[self.club.id]),
-            data=json.dumps(dict(user=self.member.id, points=5)),
-            content_type="application/json",
-        )
-        self.assertEqual(response.json(), {"points": 5, "year_points": 0})
+    def test_reduction_comes_off_this_year_first_then_prior_years(self):
+        # This-year balance is 23. Taking away 30 charges 23 to this year and 7 to prior years.
+        self.assertEqual(self.set_total(0), {"points": 0, "year_points": 0})
+        adjustment = PointsAdjustment.objects.get()
+        self.assertEqual((adjustment.delta, adjustment.year_delta), (-30, -23))
+
+    def test_zeroing_old_points_does_not_poison_this_year(self):
+        # A student with 80 undated points and nothing this year gets zeroed, then attends a meeting.
+        student = make_user("old@example.com", first_name="Old", last_name="Timer")
+        Membership.objects.create(user=student, organization=self.club, points=80)
+        self.assertEqual(self.set_total(0, user=student), {"points": 0, "year_points": 0})
+        adjustment = PointsAdjustment.objects.get(membership__user=student)
+        self.assertEqual((adjustment.delta, adjustment.year_delta), (-80, 0))
+
+        Submission.objects.create(user=student, event=self.new_event)  # +23 this year
+        _, row = self.member_row(user=student)
+        self.assertEqual((row["points"], row["year_points"]), (23, 23))
+
+    def test_unchanged_total_is_not_logged(self):
+        self.assertEqual(self.set_total(30), {"points": 30, "year_points": 23})
+        self.assertFalse(PointsAdjustment.objects.exists())
+
+    def test_log_survives_deleting_the_officer(self):
+        self.set_total(45)
+        self.officer.delete()
+        adjustment = PointsAdjustment.objects.get()
+        self.assertIsNone(adjustment.created_by)
+        self.client.force_login(make_user("root@example.com", is_superuser=True, is_staff=True))
+        _, row = self.member_row()
+        self.assertEqual(row["year_points"], 38)
+
+    def test_rows_are_ranked_by_school_year_points(self):
+        # Higher total from old points, but nothing this year -> ranked below Mia.
+        veteran = make_user("vet@example.com", first_name="Vic", last_name="Veteran")
+        Membership.objects.create(user=veteran, organization=self.club, points=200)
+        response = self.client.get(reverse("admin:core_organization_points", args=[self.club.id]))
+        names = [m["first_name"] for m in response.context["members"]]
+        self.assertEqual(names, ["Mia", "Vic"])
 
     def test_csv_includes_school_year_column(self):
+        self.set_total(45)
         response = self.client.get(reverse("admin:core_organization_points_csv", args=[self.club.id]))
         header, row = response.content.decode().splitlines()[:2]
         label = school_year_label(self.year_start)
-        self.assertIn(label, header)
         columns = dict(zip(header.split(","), row.split(",")))
-        self.assertEqual(columns["points"], "30")
-        self.assertEqual(columns[label], "23")
+        self.assertEqual(columns["points"], "45")
+        self.assertEqual(columns[label], "38")
+        self.assertEqual(columns["This year"], "23")
+        self.assertEqual(columns["Last year"], "7")
+
+    def test_superuser_cannot_edit_totals_on_user_page(self):
+        from core.admin import UserAdmin
+
+        self.assertIn("points", UserAdmin.MembershipAdmin.readonly_fields)
