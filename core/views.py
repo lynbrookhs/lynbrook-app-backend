@@ -354,10 +354,7 @@ class AppVersionView(views.APIView):
     permission_classes = ()
 
     def get(self, r):
-        # Must match the store binaries' identifiers (ios buildNumber / android
-        # versionCode). Older binaries show the "Update Required" screen, which
-        # matters since the SDK 54 split: OTA updates can no longer reach them.
-        return Response({"android": 29, "ios": "2.4.0"})
+        return Response({"android": 26, "ios": "2.2.0"})
 
 
 def account_deletion_view(request):
