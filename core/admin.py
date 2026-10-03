@@ -28,6 +28,18 @@ from core.models import *
 SCHOOL_YEAR_START_MONTH = 8  # August
 
 
+def member_year_points(membership, year_start):
+    """School-year points for one member, read fresh from the database."""
+    events = (
+        Submission.objects.filter(
+            user_id=membership.user_id, event__organization_id=membership.organization_id, event__start__gte=year_start
+        )
+        .select_related("event")
+    )
+    adjustments = membership.adjustments.filter(created_at__gte=year_start).aggregate(total=Sum("year_delta"))
+    return max(sum(s.get_points() for s in events) + (adjustments["total"] or 0), 0)
+
+
 def school_year_start(today=None):
     """Start of the current school year as an aware datetime (midnight local time)."""
     today = today or timezone.localdate()
@@ -165,8 +177,14 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
     class MembershipAdmin(admin.TabularInline, DynamicArrayMixin):
         model = Membership
         extra = 0
-        # Totals are edited from the organization's points grid, which logs each change with a date.
-        readonly_fields = ("points",)
+
+        # Point totals are normally edited from the organization's points grid, which logs
+        # each change with a date. Superusers may also edit them here; save_formset below
+        # logs those edits the same way so school-year totals stay correct.
+        def get_readonly_fields(self, request, obj=None):
+            if request.user.is_superuser:
+                return ()
+            return ("points",)
 
     class ExpoPushTokenAdmin(admin.TabularInline, DynamicArrayMixin):
         model = ExpoPushToken
@@ -187,6 +205,32 @@ class UserAdmin(BaseUserAdmin, DynamicArrayMixin):
 
     def has_view_permission(self, request, obj=None):
         return True
+
+    def save_formset(self, request, form, formset, change):
+        if formset.model is not Membership:
+            return super().save_formset(request, form, formset, change)
+
+        edits = []
+        deleted = set(id(f) for f in formset.deleted_forms)
+        for f in formset.forms:
+            if f.instance.pk and id(f) not in deleted and "points" in getattr(f, "changed_data", []):
+                old = f.initial.get("points", 0) or 0
+                new = f.cleaned_data.get("points")
+                if new is not None and new != old:
+                    edits.append((f.instance, new - old))
+
+        super().save_formset(request, form, formset, change)
+
+        year_start = school_year_start()
+        for membership, delta in edits:
+            if delta > 0:
+                year_delta = delta
+            else:
+                balance = member_year_points(membership, year_start)
+                year_delta = -min(-delta, balance)
+            PointsAdjustment.objects.create(
+                membership=membership, delta=delta, year_delta=year_delta, created_by=request.user
+            )
 
 
 @admin.register(Organization)
@@ -300,15 +344,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         return {row["membership_id"]: row["total"] for row in rows}
 
     def get_member_year_points(self, membership, year_start):
-        """School-year points for one member, read fresh from the database."""
-        events = (
-            Submission.objects.filter(
-                user_id=membership.user_id, event__organization_id=membership.organization_id, event__start__gte=year_start
-            )
-            .select_related("event")
-        )
-        adjustments = membership.adjustments.filter(created_at__gte=year_start).aggregate(total=Sum("year_delta"))
-        return max(sum(s.get_points() for s in events) + (adjustments["total"] or 0), 0)
+        return member_year_points(membership, year_start)
 
     def get_members_with_points(self, org, events, year_start):
         """Rows for the grid/CSV, ranked by school-year points then total."""
