@@ -354,7 +354,10 @@ class AppVersionView(views.APIView):
     permission_classes = ()
 
     def get(self, r):
-        return Response({"android": 26, "ios": "2.2.0"})
+        # ios 2.4.0 verified publicly live on the App Store 2026-10-05. Android stays at the
+        # old floor until the 2.4.0 Play release ships; raising it first would strand Android
+        # users with no store update to install.
+        return Response({"android": 26, "ios": "2.4.0"})
 
 
 def account_deletion_view(request):
