@@ -234,11 +234,11 @@ class CreateMemorySerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(f"At most {self.MAX_RECIPIENTS} people per photo.")
         users = list(
             get_user_model()
-            .objects.filter(id__in=ids, is_active=True)
+            .objects.filter(id__in=ids, is_active=True, grad_year=models.current_senior_year())
             .exclude(type=models.UserType.GUEST)
         )
         if len(users) != len(ids):
-            raise serializers.ValidationError("One or more tagged people were not found.")
+            raise serializers.ValidationError("Everyone tagged must be a current senior.")
         return users
 
     def validate(self, data):

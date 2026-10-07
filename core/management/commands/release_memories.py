@@ -51,7 +51,7 @@ class Command(BaseCommand):
         if tokens:
             send_notifications(
                 tokens,
-                "Senior Memories 📸",
+                "Senior Memories",
                 "Photos and notes from the Class of %d are waiting for you in the app!" % year,
             )
             self.stdout.write(f"Notified {len(tokens)} devices.")

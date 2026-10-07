@@ -204,7 +204,11 @@ class MemoryViewSet(
         if len(q) < 2:
             return Response([])
         parts = q.split()
-        qs = get_user_model().objects.filter(is_active=True).exclude(type=models.UserType.GUEST)
+        qs = (
+            get_user_model()
+            .objects.filter(is_active=True, grad_year=models.current_senior_year())
+            .exclude(type=models.UserType.GUEST)
+        )
         for part in parts[:3]:
             qs = qs.filter(Q(first_name__icontains=part) | Q(last_name__icontains=part))
         qs = qs.order_by("first_name", "last_name")[:15]
