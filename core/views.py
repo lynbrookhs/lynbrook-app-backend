@@ -169,7 +169,7 @@ class MemoryViewSet(
     `received/` exposes memories the caller was tagged in once released."""
 
     def get_queryset(self):
-        return models.Memory.objects.filter(sender=self.request.user)
+        return models.Memory.objects.filter(sender=self.request.user).order_by("-created_at")
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -213,6 +213,41 @@ class MemoryViewSet(
             qs = qs.filter(Q(first_name__icontains=part) | Q(last_name__icontains=part))
         qs = qs.order_by("first_name", "last_name")[:15]
         return Response(serializers.MemoryRecipientSerializer(qs, many=True).data)
+
+    @action(detail=False, url_path="received/archive")
+    def received_archive(self, request):
+        """Everything the caller was tagged in, as polaroids zipped into one
+        folder per sender. Only available once their year is released."""
+        import io
+        import re
+        import zipfile
+
+        from django.http import FileResponse
+
+        from core.polaroid import render_polaroid
+
+        year = models.current_senior_year()
+        if not models.MemoryRelease.is_released(year):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        memories = (
+            request.user.received_memories.filter(grad_year=year)
+            .select_related("sender")
+            .order_by("created_at")
+        )
+        if not memories:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for memory in memories:
+                sender_name = f"{memory.sender.first_name} {memory.sender.last_name}".strip()
+                folder = re.sub(r"[^A-Za-z0-9-]+", "-", sender_name).strip("-") or "unknown"
+                image = render_polaroid(memory.photo.open("rb"), memory.note, sender_name, memory.created_at)
+                zf.writestr(f"{folder}/memory-{memory.pk}.jpg", image.read())
+        buf.seek(0)
+        return FileResponse(
+            buf, content_type="application/zip", filename=f"senior-memories-{year}.zip", as_attachment=True
+        )
 
     @action(detail=True)
     def polaroid(self, request, pk=None):
