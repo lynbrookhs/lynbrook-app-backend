@@ -707,9 +707,11 @@ class SuperuserOnlyAdmin(admin.ModelAdmin):
 
 
 @admin.register(Memory)
-class MemoryAdmin(SuperuserOnlyAdmin):
-    """Moderation view for senior memories. Superusers only — photos stay private
-    from club admins/advisors. Delete anything inappropriate before release."""
+class MemoryAdmin(admin.ModelAdmin, DynamicArrayMixin):
+    """Moderation view for senior memories: superusers, plus admins of the matching
+    class organization (the senior class officers). Everything is read-only except
+    delete — remove anything inappropriate before release. Club admins/advisors of
+    other orgs see nothing."""
 
     list_display = ("sender", "short_note", "grad_year", "recipient_count", "created_at")
     list_filter = ("grad_year",)
@@ -727,6 +729,44 @@ class MemoryAdmin(SuperuserOnlyAdmin):
     @admin.display(description="Photo")
     def preview(self, obj):
         return mark_safe(f'<img src="{obj.photo.url}" style="max-width:480px;max-height:480px;">')
+
+    def _moderated_years(self, request):
+        """None means every year (superuser); otherwise the grad years whose class
+        org lists this user as an admin."""
+        if request.user.is_superuser:
+            return None
+        return list(
+            Organization.objects.filter(
+                type=OrganizationType.CLASS, admins=request.user, required_grad_year__isnull=False
+            ).values_list("required_grad_year", flat=True)
+        )
+
+    def has_module_permission(self, request):
+        return self._moderated_years(request) is None or bool(self._moderated_years(request))
+
+    def has_view_permission(self, request, obj=None):
+        years = self._moderated_years(request)
+        if years is None:
+            return True
+        if obj is None:
+            return bool(years)
+        return obj.grad_year in years
+
+    def has_change_permission(self, request, obj=None):
+        return self.has_view_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return self.has_view_permission(request, obj)
+
+    def has_add_permission(self, request):
+        return False
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        years = self._moderated_years(request)
+        if years is None:
+            return qs
+        return qs.filter(grad_year__in=years)
 
 
 @admin.register(MemoryRelease)
