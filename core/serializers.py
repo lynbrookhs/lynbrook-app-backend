@@ -244,8 +244,8 @@ class CreateMemorySerializer(serializers.ModelSerializer):
     def validate(self, data):
         user = self.context["request"].user
         year = models.current_senior_year()
-        if user.grad_year != year:
-            raise serializers.ValidationError("Only current seniors can upload memories.")
+        if user.type == models.UserType.GUEST:
+            raise serializers.ValidationError("Guests cannot upload memories.")
         if models.MemoryRelease.is_released(year):
             raise serializers.ValidationError("This year's memories have already been released.")
         if user.sent_memories.count() >= self.MAX_UPLOADS:

@@ -198,8 +198,8 @@ class MemoryViewSet(
 
     @action(detail=False)
     def recipients(self, request):
-        if request.user.grad_year != models.current_senior_year():
-            raise PermissionDenied("Only seniors can search for people to tag.")
+        if request.user.type == models.UserType.GUEST:
+            raise PermissionDenied("Guests cannot send memories.")
         q = request.query_params.get("q", "").strip()
         if len(q) < 2:
             return Response([])
