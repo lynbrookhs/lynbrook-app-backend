@@ -733,6 +733,8 @@ class MemoryAdmin(admin.ModelAdmin, DynamicArrayMixin):
     def _moderated_years(self, request):
         """None means every year (superuser); otherwise the grad years whose class
         org lists this user as an admin."""
+        if not request.user.is_authenticated:
+            return []
         if request.user.is_superuser:
             return None
         return list(
