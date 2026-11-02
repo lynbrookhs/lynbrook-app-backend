@@ -61,12 +61,13 @@ class UserSerializer(serializers.ModelSerializer):
             "is_staff",
             "is_superuser",
             "memberships",
+            "memories_opt_out",
         )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
-            if name != "grad_year":
+            if name not in ("grad_year", "memories_opt_out"):
                 field.read_only = True
 
     memberships = NestedMembershipSerializer(many=True, read_only=True)
@@ -239,6 +240,10 @@ class CreateMemorySerializer(serializers.ModelSerializer):
         )
         if len(users) != len(ids):
             raise serializers.ValidationError("Everyone tagged must be a current senior.")
+        opted_out = [u for u in users if u.memories_opt_out]
+        if opted_out:
+            names = ", ".join(f"{u.first_name} {u.last_name}".strip() for u in opted_out)
+            raise serializers.ValidationError(f"{names} opted out of being tagged in memories.")
         return users
 
     def validate(self, data):

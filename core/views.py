@@ -206,7 +206,7 @@ class MemoryViewSet(
         parts = q.split()
         qs = (
             get_user_model()
-            .objects.filter(is_active=True, grad_year=models.current_senior_year())
+            .objects.filter(is_active=True, grad_year=models.current_senior_year(), memories_opt_out=False)
             .exclude(type=models.UserType.GUEST)
         )
         for part in parts[:3]:

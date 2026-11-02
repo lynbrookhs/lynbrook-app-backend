@@ -713,12 +713,19 @@ class MemoryAdmin(admin.ModelAdmin, DynamicArrayMixin):
     delete — remove anything inappropriate before release. Club admins/advisors of
     other orgs see nothing."""
 
-    list_display = ("sender", "short_note", "grad_year", "recipient_count", "created_at")
-    list_filter = ("grad_year",)
+    list_display = ("sender", "short_note", "grad_year", "recipient_count", "created_at", "reviewed")
+    list_editable = ("reviewed",)
+    list_filter = ("reviewed", "grad_year")
     search_fields = ("sender__first_name", "sender__last_name", "sender__email", "note")
     readonly_fields = ("sender", "grad_year", "note", "recipients", "created_at", "preview")
     exclude = ("photo",)
     date_hierarchy = "created_at"
+    actions = ("remove_note",)
+
+    @admin.action(description="Remove note, keep photo")
+    def remove_note(self, request, queryset):
+        updated = queryset.exclude(note="").update(note="")
+        self.message_user(request, f"Removed the note from {updated} memories (photos kept).")
 
     def short_note(self, obj):
         return (obj.note[:60] + "…") if len(obj.note) > 60 else obj.note

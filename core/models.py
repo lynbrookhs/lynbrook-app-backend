@@ -112,6 +112,9 @@ class User(AbstractUser):
     )
 
     wordle_streak = IntegerField(default=0)
+    memories_opt_out = BooleanField(
+        default=False, help_text="Senior has opted out of being tagged in new memories."
+    )
 
     def __str__(self):
         if self.grad_year is None:
@@ -397,6 +400,7 @@ class Memory(Model):
     grad_year = IntegerField(help_text="Senior class this memory belongs to (controls its release).")
     photo = ImageField(upload_to="memories/")
     note = CharField(max_length=300, blank=True)
+    reviewed = BooleanField(default=False, help_text="Checked off by a moderator.")
     recipients = ManyToManyField(USER_MODEL, related_name="received_memories", blank=True)
     created_at = DateTimeField(auto_now_add=True)
 
