@@ -254,7 +254,99 @@ class SchoolYearPointsTests(TestCase):
         self.assertEqual(columns["This year"], "23")
         self.assertEqual(columns["Last year"], "7")
 
-    def test_superuser_cannot_edit_totals_on_user_page(self):
+    def test_user_page_totals_readonly_except_for_superusers(self):
+        # Superuser inline edits are allowed (and logged by save_formset); everyone else is readonly.
+        from django.contrib import admin as django_admin
+
         from core.admin import UserAdmin
 
-        self.assertIn("points", UserAdmin.MembershipAdmin.readonly_fields)
+        inline = UserAdmin.MembershipAdmin(User, django_admin.site)
+        request = type("Request", (), {})()
+        request.user = self.officer
+        self.assertIn("points", inline.get_readonly_fields(request))
+        request.user = make_user("root2@example.com", is_superuser=True, is_staff=True)
+        self.assertEqual(inline.get_readonly_fields(request), ())
+
+
+class PointsEventColumnTests(TestCase):
+    """Event columns: chronological, this school year by default, with time frame, order and view options."""
+
+    def setUp(self):
+        self.club = make_club("Chess Club")
+        self.officer = make_user("officer@example.com")
+        self.club.admins.add(self.officer)
+        self.member = make_user("member@example.com", first_name="Mia", last_name="Member")
+        Membership.objects.create(user=self.member, organization=self.club)
+
+        self.year_start = school_year_start()
+        # Created out of chronological order on purpose; one meeting is from last school year.
+        self.nov = make_event(self.club, "11/5 Meeting", points=1, start=self.year_start + timedelta(days=96))
+        self.old = make_event(self.club, "01/09 Meeting", points=1, start=self.year_start - timedelta(days=204))
+        self.sep = make_event(self.club, "9/17 Meeting", points=1, start=self.year_start + timedelta(days=47))
+        self.oct = make_event(self.club, "10/22 Meeting", points=1, start=self.year_start + timedelta(days=82))
+        Submission.objects.create(user=self.member, event=self.old)
+        Submission.objects.create(user=self.member, event=self.sep)
+        self.url = reverse("admin:core_organization_points", args=[self.club.id])
+        self.client.force_login(self.officer)
+
+    def get_context(self, query=""):
+        return self.client.get(self.url + query).context
+
+    def test_grid_defaults_to_this_school_year_in_chronological_order(self):
+        context = self.get_context()
+        self.assertEqual(context["event_ids"], [self.sep.id, self.oct.id, self.nov.id])
+        self.assertEqual(context["events"], ["9/17 Meeting", "10/22 Meeting", "11/5 Meeting"])
+        self.assertEqual(len(context["members"][0]["events"]), 3)
+        # Hiding last year's column deletes nothing: the submission and its points survive.
+        self.assertTrue(Submission.objects.filter(user=self.member, event=self.old).exists())
+        self.assertEqual(context["members"][0]["points"], 2)
+
+    def test_newest_first_order(self):
+        context = self.get_context("?order=desc")
+        self.assertEqual(context["event_ids"], [self.nov.id, self.oct.id, self.sep.id])
+
+    def test_empty_time_frame_shows_every_year_with_year_labels(self):
+        context = self.get_context("?from=&to=")
+        self.assertEqual(context["event_ids"], [self.old.id, self.sep.id, self.oct.id, self.nov.id])
+        self.assertEqual(
+            context["events"],
+            [
+                f"01/09 Meeting ({self.old.start.year})",
+                f"9/17 Meeting ({self.sep.start.year})",
+                f"10/22 Meeting ({self.oct.start.year})",
+                f"11/5 Meeting ({self.nov.start.year})",
+            ],
+        )
+
+    def test_time_frame_filters_columns_but_never_the_school_year_total(self):
+        frame_start = (self.year_start + timedelta(days=60)).date().isoformat()
+        context = self.get_context(f"?from={frame_start}&to=")
+        self.assertEqual(context["event_ids"], [self.oct.id, self.nov.id])
+        # Mia's September meeting is outside the frame but still counts toward the year column.
+        self.assertEqual(context["members"][0]["year_points"], 1)
+
+    def test_to_date_is_inclusive(self):
+        to = timezone.localtime(self.oct.start).date().isoformat()
+        context = self.get_context(f"?from=&to={to}")
+        self.assertEqual(context["event_ids"], [self.old.id, self.sep.id, self.oct.id])
+
+    def test_by_meeting_view_lists_attendees_with_points(self):
+        context = self.get_context("?view=meetings")
+        self.assertTrue(context["by_meeting"])
+        meetings = context["meetings"]
+        self.assertEqual([m["label"] for m in meetings], ["9/17 Meeting", "10/22 Meeting", "11/5 Meeting"])
+        self.assertEqual(meetings[0]["attendees"], [dict(first="Mia", last="Member", points=1)])
+        self.assertEqual(meetings[1]["attendees"], [])
+
+    def test_csv_always_exports_every_year_and_keeps_duplicate_names_apart(self):
+        twin = make_event(self.club, "11/5 Meeting", points=1, start=self.nov.start - timedelta(days=365))
+        Submission.objects.create(user=self.member, event=twin)
+        response = self.client.get(reverse("admin:core_organization_points_csv", args=[self.club.id]))
+        header, row = response.content.decode().splitlines()[:2]
+        columns = dict(zip(header.split(","), row.split(",")))
+        twin_label = "11/5 Meeting [%s]" % twin.start.strftime("%m/%d/%y")
+        nov_label = "11/5 Meeting [%s]" % self.nov.start.strftime("%m/%d/%y")
+        self.assertIn("01/09 Meeting", columns)  # old events are always exported
+        self.assertEqual(columns[twin_label], "1")  # same-named meetings keep separate columns
+        self.assertEqual(columns[nov_label], "")
+        self.assertEqual(len(header.split(",")), 7 + 5)  # no columns collapsed

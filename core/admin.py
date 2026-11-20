@@ -1,7 +1,7 @@
 import csv
 import json
-from collections import defaultdict
-from datetime import datetime
+from collections import Counter, defaultdict
+from datetime import datetime, timedelta
 
 import qrcode
 from datauri import DataURI
@@ -23,7 +23,7 @@ from qrcode.image.svg import SvgPathFillImage
 from core.models import *
 
 
-# The "this school year" points column counts everything from the 1st of this month onward.
+# The "this school year" points column counts everything from Aug 1 of the current school year onward.
 # Nothing else is year-specific: the start date and header label roll over on their own each year.
 SCHOOL_YEAR_START_MONTH = 8  # August
 
@@ -312,7 +312,12 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         # self.get_queryset is scoped to the orgs this user is an admin/advisor of, so anyone else gets DoesNotExist.
         qs = self.get_queryset(request).prefetch_related(
             Prefetch("memberships", Membership.objects.select_related("user").order_by("-points")),
-            Prefetch("events", Event.objects.prefetch_related("submissions")),
+            Prefetch(
+                "events",
+                Event.objects.order_by("start", "id").prefetch_related(
+                    Prefetch("submissions", Submission.objects.select_related("user"))
+                ),
+            ),
         )
         org = qs.get(id=object_id)
         if not self.has_view_permission(request, org):
@@ -324,6 +329,50 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             (e, {x.user_id: e.points if x.points is None else x.points for x in e.submissions.all()})
             for e in org.events.all()
         ]
+
+    def get_time_frame(self, request, year_start):
+        """(start, end) of the chosen time frame. With no range in the URL it is this school year
+        onward; a submitted-but-empty field means unbounded on that side. `end` is exclusive (the
+        day after the chosen To date). Bad dates are treated as empty."""
+        if "from" not in request.GET and "to" not in request.GET:
+            return year_start, None
+
+        def parse(name):
+            try:
+                return timezone.make_aware(datetime.strptime(request.GET.get(name, "").strip(), "%Y-%m-%d"))
+            except ValueError:
+                return None
+
+        start = parse("from")
+        end = parse("to")
+        if end is not None:
+            end += timedelta(days=1)
+        return start, end
+
+    def get_shown_events(self, request, org, year_start):
+        """The event columns: the chosen time frame (default: this school year), chronological,
+        newest first with ?order=desc. Filtering only hides columns; nothing is changed or deleted.
+        Returns (every event, the shown events, frame start, frame end)."""
+        events = self.get_events_with_points(org)
+        start, end = self.get_time_frame(request, year_start)
+        shown = [x for x in events if (start is None or x[0].start >= start) and (end is None or x[0].start < end)]
+        if request.GET.get("order") == "desc":
+            shown = shown[::-1]
+        return events, shown, start, end
+
+    def get_event_labels(self, events, show_year):
+        """Column labels. When the frame reaches outside this school year the year is appended
+        (club events are usually named by month/day only). Duplicate labels get the event date,
+        then the id, so every label - and every CSV column - stays unique instead of collapsing."""
+        labels = [f"{e.name} ({e.start.year})" if show_year else e.name for e, _ in events]
+        for suffix in (lambda e: e.start.strftime(" [%m/%d/%y]"), lambda e: f" [#{e.id}]"):
+            duplicates = {label for label, count in Counter(labels).items() if count > 1}
+            if not duplicates:
+                break
+            labels = [
+                label + suffix(e) if label in duplicates else label for label, (e, _) in zip(labels, events)
+            ]
+        return labels
 
     def get_year_event_points(self, events, year_start):
         """user_id -> points from events dated on/after the start of the current school year."""
@@ -346,9 +395,10 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
     def get_member_year_points(self, membership, year_start):
         return member_year_points(membership, year_start)
 
-    def get_members_with_points(self, org, events, year_start):
-        """Rows for the grid/CSV, ranked by school-year points then total."""
-        year_events = self.get_year_event_points(events, year_start)
+    def get_members_with_points(self, org, shown_events, all_events, year_start):
+        """Rows for the grid/CSV, ranked by school-year points then total. Cells come from the
+        shown columns; the school-year column always counts every event, whatever the frame."""
+        year_events = self.get_year_event_points(all_events, year_start)
         year_adjustments = self.get_year_adjustments(org, year_start)
         members = [
             dict(
@@ -357,12 +407,34 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                 year_points=max(
                     year_events.get(membership.user_id, 0) + year_adjustments.get(membership.id, 0), 0
                 ),
-                events=[users.get(membership.user_id) for event, users in events],
+                events=[users.get(membership.user_id) for event, users in shown_events],
             )
             for membership in org.memberships.all()
         ]
         members.sort(key=lambda m: (-m["year_points"], -m["points"], m["last_name"], m["first_name"]))
         return members
+
+    def get_meeting_rosters(self, events, labels):
+        """The by-meeting view: each meeting with who came and the points each person earned there."""
+        meetings = []
+        for (event, _), label in zip(events, labels):
+            local = timezone.localtime(event.start)
+            attendees = sorted(
+                (
+                    dict(first=s.user.first_name, last=s.user.last_name, points=s.get_points())
+                    for s in event.submissions.all()
+                ),
+                key=lambda a: (a["last"].lower(), a["first"].lower()),
+            )
+            meetings.append(
+                dict(
+                    label=label,
+                    date=f"{local:%a}, {local:%b} {local.day}, {local:%Y}",
+                    points=event.points,
+                    attendees=attendees,
+                )
+            )
+        return meetings
 
     def points_view(self, request, object_id):
         try:
@@ -370,16 +442,26 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         except self.model.DoesNotExist:
             return self._get_obj_does_not_exist_redirect(request, self.model._meta, object_id)
 
-        events = self.get_events_with_points(org)
         year_start = school_year_start()
+        all_events, events, frame_start, frame_end = self.get_shown_events(request, org, year_start)
+        show_year = any(e.start < year_start for e, _ in events)
+        by_meeting = request.GET.get("view") == "meetings"
+        labels = self.get_event_labels(events, show_year)
         context = dict(
             org=org,
             can_edit=self.has_change_permission(request, org),
             update_url=reverse("admin:core_organization_points_update", args=[org.id]),
             year_label=school_year_label(year_start),
-            events=[event.name for event, _ in events],
+            by_meeting=by_meeting,
+            view="meetings" if by_meeting else "members",
+            order="desc" if request.GET.get("order") == "desc" else "asc",
+            date_from=timezone.localtime(frame_start).date().isoformat() if frame_start else "",
+            date_to=(timezone.localtime(frame_end) - timedelta(days=1)).date().isoformat() if frame_end else "",
+            year_start_date=timezone.localtime(year_start).date().isoformat(),
+            events=labels,
             event_ids=[event.id for event, _ in events],
-            members=self.get_members_with_points(org, events, year_start),
+            members=[] if by_meeting else self.get_members_with_points(org, events, all_events, year_start),
+            meetings=self.get_meeting_rosters(events, labels) if by_meeting else [],
         )
 
         return render(request, "core/organization_points.html", context)
@@ -466,10 +548,13 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
         except self.model.DoesNotExist:
             raise Http404
 
+        # The CSV is the full export: every year's events, in chronological order. Only the grid
+        # defaults to the current school year.
         events = self.get_events_with_points(org)
         year_start = school_year_start()
         year_label = school_year_label(year_start)
-        members = self.get_members_with_points(org, events, year_start)
+        labels = self.get_event_labels(events, show_year=False)
+        members = self.get_members_with_points(org, events, events, year_start)
         response = HttpResponse(
             content_type="text/csv", headers={"Content-Disposition": 'attachment; filename="points.csv"'}
         )
@@ -477,7 +562,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
             response,
             fieldnames=[
                 "id", "email", "first_name", "last_name", "grad_year", "points", year_label,
-                *[e.name for e, _ in events],
+                *labels,
             ],
         )
         writer.writeheader()
@@ -486,7 +571,7 @@ class OrganizationAdmin(admin.ModelAdmin, DynamicArrayMixin):
                 {
                     **{k: v for k, v in member.items() if k not in ("year_points", "events")},
                     year_label: member["year_points"],
-                    **{event.name: value for (event, _), value in zip(events, member["events"])},
+                    **dict(zip(labels, member["events"])),
                 }
             )
         return response

@@ -8,44 +8,110 @@
 
     <title>{{ org }} Points</title>
 
+    {% if not by_meeting %}
     <link rel="stylesheet" type="text/css"
         href="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.css">
     <link rel="stylesheet" type="text/css" href="https://handsontable.com/static/css/main.css">
 
     <script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
+    {% endif %}
 
     <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
         #header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-            background-color: white;
-            box-shadow: 0 0 10px rgba(0 0 0 / 0.2);
-            height: 50px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #ddd;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px 16px;
+        }
+
+        #header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+
+        #controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+            font-size: 14px;
+        }
+
+        #controls label {
             display: flex;
             align-items: center;
-            justify-content: center;
+            gap: 4px;
+            color: #333;
+        }
+
+        #controls .presets {
+            display: flex;
+            gap: 12px;
         }
 
         #csv {
-            position: absolute;
-            right: 16px;
+            margin-left: auto;
+            font-size: 14px;
+        }
+
+        .hint {
+            color: #555;
+            font-size: 13px;
+            margin: 6px 16px;
+        }
+
+        #meetings {
+            max-width: 680px;
+            margin: 16px auto;
+            padding: 0 16px;
+        }
+
+        #meetings section {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px 16px;
+            margin-bottom: 14px;
+        }
+
+        #meetings h2 {
+            margin: 0;
+            font-size: 17px;
+        }
+
+        #meetings .meta {
+            color: #555;
+            font-size: 13px;
+            margin: 4px 0 8px;
+        }
+
+        #meetings table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        #meetings th,
+        #meetings td {
+            text-align: left;
+            padding: 3px 6px;
+            border-top: 1px solid #eee;
+        }
+
+        #meetings th:last-child,
+        #meetings td:last-child {
+            text-align: right;
+            width: 70px;
         }
 
         #hot {
             margin: 0;
-            margin-top: 50px;
-        }
-
-        #header h1 {
-            margin: 0 16px;
-        }
-
-        #header .hint {
-            color: #555;
-            font-size: 14px;
         }
 
         #status {
@@ -70,11 +136,69 @@
 <body>
     <div id="header">
         <h1>{{ org }} Points</h1>
-        {% if can_edit %}
-        <span class="hint">Double-click a Total Points or event cell to edit. Changes save automatically.</span>
-        {% endif %}
-        <a id="csv" href="{% url 'admin:core_organization_points_csv' org.id %}">Download CSV</a>
+        <form id="controls" method="get">
+            <label>View
+                <select name="view" onchange="this.form.submit()">
+                    <option value="members" {% if view == "members" %}selected{% endif %}>By member</option>
+                    <option value="meetings" {% if view == "meetings" %}selected{% endif %}>By meeting</option>
+                </select>
+            </label>
+            <label>Order
+                <select name="order" onchange="this.form.submit()">
+                    <option value="asc" {% if order == "asc" %}selected{% endif %}>Oldest first</option>
+                    <option value="desc" {% if order == "desc" %}selected{% endif %}>Newest first</option>
+                </select>
+            </label>
+            <label>From <input type="date" name="from" value="{{ date_from }}"></label>
+            <label>To <input type="date" name="to" value="{{ date_to }}"></label>
+            <button>Apply</button>
+            <span class="presets">
+                <a href="?view={{ view }}&order={{ order }}&from={{ year_start_date }}&to=">This school year</a>
+                <a href="?view={{ view }}&order={{ order }}&from=&to=">All years</a>
+            </span>
+        </form>
+        <a id="csv" href="{% url 'admin:core_organization_points_csv' org.id %}">Download CSV (all years)</a>
     </div>
+
+    {% if by_meeting %}
+
+    <div id="meetings">
+        {% for meeting in meetings %}
+        <section>
+            <h2>{{ meeting.label }}</h2>
+            <p class="meta">{{ meeting.date }} &middot; {{ meeting.attendees|length }} attended &middot;
+                worth {{ meeting.points }} point{{ meeting.points|pluralize }} unless edited</p>
+            {% if meeting.attendees %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Member</th>
+                        <th>Points</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attendee in meeting.attendees %}
+                    <tr>
+                        <td>{{ attendee.last }}, {{ attendee.first }}</td>
+                        <td>{{ attendee.points }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="meta">No one is recorded for this meeting.</p>
+            {% endif %}
+        </section>
+        {% empty %}
+        <p class="hint">No meetings in this time frame.</p>
+        {% endfor %}
+    </div>
+
+    {% else %}
+
+    {% if can_edit %}
+    <p class="hint">Double-click a Total Points or event cell to edit. Changes save automatically.</p>
+    {% endif %}
     <div id="hot"></div>
     <div id="status"></div>
 
@@ -190,6 +314,8 @@
             }
         }
     </script>
+
+    {% endif %}
 </body>
 
 </html>
