@@ -143,47 +143,70 @@
             width: 100%;
         }
 
+        /* Meetings flow left to right as cards, in the chosen order, and wrap. The tables
+           match the member grid's look (gray headers, light borders). */
         #meetings {
-            max-width: 680px;
-            margin: 16px auto;
-            padding: 0 16px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: 14px;
+            margin: 16px;
         }
 
         #meetings section {
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            padding: 12px 16px;
-            margin-bottom: 14px;
+            width: 290px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px 12px;
         }
 
         #meetings h2 {
             margin: 0;
-            font-size: 17px;
+            font-size: 15px;
         }
 
         #meetings .meta {
             color: #555;
             font-size: 13px;
-            margin: 4px 0 8px;
+            margin: 3px 0 8px;
+        }
+
+        #meetings .roster {
+            max-height: 430px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
         }
 
         #meetings table {
             width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 13px;
+        }
+
+        #meetings th {
+            position: sticky;
+            top: 0;
+            background: #f3f3f3;
+            border-bottom: 1px solid #ccc;
+            font-weight: 400;
+            color: #222;
         }
 
         #meetings th,
         #meetings td {
             text-align: left;
-            padding: 3px 6px;
-            border-top: 1px solid #eee;
+            padding: 3px 8px;
+        }
+
+        #meetings tr + tr td {
+            border-top: 1px solid #e8e8e8;
         }
 
         #meetings th:last-child,
         #meetings td:last-child {
             text-align: right;
-            width: 70px;
+            width: 52px;
         }
 
         #status {
@@ -242,27 +265,29 @@
 
     <div id="meetings">
         {% for meeting in meetings %}
-        <section>
+        <section title="{{ meeting.date }}">
             <h2>{{ meeting.label }}</h2>
-            <p class="meta">{{ meeting.date }} &middot; {{ meeting.attendees|length }} attended &middot;
-                worth {{ meeting.points }} point{{ meeting.points|pluralize }} unless edited</p>
+            <p class="meta">{{ meeting.attendees|length }} attended &middot;
+                {{ meeting.points }} point{{ meeting.points|pluralize }}</p>
             {% if meeting.attendees %}
-            <table>
-                <thead>
-                    <tr>
-                        <th>Member</th>
-                        <th>Points</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for attendee in meeting.attendees %}
-                    <tr>
-                        <td>{{ attendee.last }}, {{ attendee.first }}</td>
-                        <td>{{ attendee.points }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="roster">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Member</th>
+                            <th>Points</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for attendee in meeting.attendees %}
+                        <tr>
+                            <td>{{ attendee.last }}, {{ attendee.first }}</td>
+                            <td>{{ attendee.points }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
             {% else %}
             <p class="meta">No one is recorded for this meeting.</p>
             {% endif %}
