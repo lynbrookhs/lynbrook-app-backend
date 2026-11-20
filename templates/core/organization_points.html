@@ -5,42 +5,59 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
 
     <title>{{ org }} Points</title>
 
     {% if not by_meeting %}
     <link rel="stylesheet" type="text/css"
         href="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.css">
-    <link rel="stylesheet" type="text/css" href="https://handsontable.com/static/css/main.css">
-
     <script src="https://cdn.jsdelivr.net/npm/handsontable@latest/dist/handsontable.full.min.js"></script>
     {% endif %}
 
     <style>
+        html,
+        body {
+            /* a horizontal swipe must pan the grid, never navigate the browser back */
+            overscroll-behavior-x: none;
+        }
+
         body {
             margin: 0;
+            background: #fff;
+            color: #111;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
+        /* In grid view the page itself never scrolls; the table scrolls inside its own viewport
+           with the name columns and header frozen. */
+        body.grid {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
         #header {
-            padding: 12px 16px;
+            padding: 10px 16px;
             border-bottom: 1px solid #ddd;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 10px 16px;
+            gap: 8px 16px;
+            flex: none;
         }
 
         #header h1 {
             margin: 0;
-            font-size: 22px;
+            font-size: 20px;
         }
 
         #controls {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 8px 12px;
+            gap: 8px 10px;
             font-size: 14px;
         }
 
@@ -49,6 +66,58 @@
             align-items: center;
             gap: 4px;
             color: #333;
+        }
+
+        #controls select,
+        #controls input,
+        #controls button {
+            appearance: auto;
+            font: inherit;
+            font-size: 13px;
+            padding: 4px 8px;
+            border: 1px solid #bbb;
+            border-radius: 5px;
+            background: #fff;
+            color: #111;
+        }
+
+        #controls button {
+            background: #f4f4f4;
+            cursor: pointer;
+        }
+
+        #controls button:hover {
+            background: #e8e8e8;
+        }
+
+        #mode {
+            display: inline-flex;
+        }
+
+        #mode button {
+            appearance: auto;
+            font: inherit;
+            font-size: 13px;
+            padding: 4px 10px;
+            border: 1px solid #bbb;
+            background: #f4f4f4;
+            color: #111;
+            cursor: pointer;
+        }
+
+        #mode button:first-child {
+            border-radius: 5px 0 0 5px;
+        }
+
+        #mode button:last-child {
+            border-radius: 0 5px 5px 0;
+            border-left: none;
+        }
+
+        #mode button.active {
+            background: #0b57d0;
+            border-color: #0b57d0;
+            color: #fff;
         }
 
         #controls .presets {
@@ -65,6 +134,13 @@
             color: #555;
             font-size: 13px;
             margin: 6px 16px;
+            flex: none;
+        }
+
+        #hot {
+            flex: 1;
+            min-height: 0;
+            width: 100%;
         }
 
         #meetings {
@@ -110,10 +186,6 @@
             width: 70px;
         }
 
-        #hot {
-            margin: 0;
-        }
-
         #status {
             position: fixed;
             bottom: 12px;
@@ -133,7 +205,7 @@
     </style>
 </head>
 
-<body>
+<body class="{% if not by_meeting %}grid{% endif %}">
     <div id="header">
         <h1>{{ org }} Points</h1>
         <form id="controls" method="get">
@@ -157,6 +229,12 @@
                 <a href="?view={{ view }}&order={{ order }}&from=&to=">All years</a>
             </span>
         </form>
+        {% if can_edit and not by_meeting %}
+        <span id="mode">
+            <button id="view-mode" type="button" class="active">View mode</button>
+            <button id="edit-mode" type="button">Edit mode</button>
+        </span>
+        {% endif %}
         <a id="csv" href="{% url 'admin:core_organization_points_csv' org.id %}">Download CSV (all years)</a>
     </div>
 
@@ -197,7 +275,8 @@
     {% else %}
 
     {% if can_edit %}
-    <p class="hint">Double-click a Total Points or event cell to edit. Changes save automatically.</p>
+    <p class="hint" id="edit-hint" hidden>Edit mode: double-click a Total Points or event cell.
+        Changes save automatically.</p>
     {% endif %}
     <div id="hot"></div>
     <div id="status"></div>
@@ -217,6 +296,10 @@
         const updateUrl = JSON.parse(document.getElementById("update-url-data").textContent);
         const yearLabel = JSON.parse(document.getElementById("year-label-data").textContent);
         const csrfToken = "{{ csrf_token }}";
+
+        // The grid always opens read-only; officers turn editing on explicitly so nobody
+        // changes points by accident.
+        let editing = false;
 
         const statusElement = document.querySelector("#status");
         let statusTimeout = null;
@@ -247,9 +330,9 @@
         const hotElement = document.querySelector("#hot");
         const hot = new Handsontable(hotElement, {
             data: members,
-            readOnly: !canEdit,
-            width: "auto",
-            height: "auto",
+            readOnly: true,
+            width: "100%",
+            height: "100%",
             rowHeaders: true,
             fixedColumnsLeft: 4,
             colHeaders: [
@@ -279,6 +362,23 @@
             afterChange: onCellChanged,
         });
 
+        window.addEventListener("resize", () => hot.refreshDimensions());
+
+        const viewModeButton = document.getElementById("view-mode");
+        const editModeButton = document.getElementById("edit-mode");
+        const editHint = document.getElementById("edit-hint");
+        function setMode(edit) {
+            editing = edit;
+            hot.updateSettings({ readOnly: !edit });
+            viewModeButton.classList.toggle("active", !edit);
+            editModeButton.classList.toggle("active", edit);
+            if (editHint) editHint.hidden = !edit;
+        }
+        if (viewModeButton) {
+            viewModeButton.addEventListener("click", () => setMode(false));
+            editModeButton.addEventListener("click", () => setMode(true));
+        }
+
         function nonNegativeInteger(value, callback) {
             if (value === null || value === undefined || value === "") {
                 // Event cells may be cleared (removes the submission); the total may not.
@@ -290,7 +390,7 @@
 
         function onCellChanged(changes, source) {
             // "loadData" is the initial fill; "server" is our own write-back of the recalculated total.
-            if (!changes || !canEdit || source === "loadData" || source === "server") return;
+            if (!changes || !editing || !canEdit || source === "loadData" || source === "server") return;
 
             for (const [row, prop, oldValue, newValue] of changes) {
                 if (oldValue === newValue) continue;
